@@ -4,7 +4,7 @@ import os
 from typing import Optional, List, Tuple
 
 class Database:
-    def __init__(self, db_path: str = 'data/database/watch_management.db'):
+    def __init__(self, db_path: str = 'data/watch_management.db'):
         # Create directory if it doesn't exist
         os.makedirs(os.path.dirname(db_path), exist_ok=True)
         
