@@ -172,6 +172,19 @@ class BrandManagementTab(QWidget):
                 QMessageBox.warning(self, 'Lỗi', 'File CSV trống hoặc không có dữ liệu.')
                 return
 
+            # Kiểm tra xem đây có phải là file sản phẩm không
+            product_indicators = ['brand', 'product_type', 'price', 'quantity']
+            has_product_indicators = any(indicator in reader.fieldnames for indicator in product_indicators)
+            
+            if has_product_indicators:
+                QMessageBox.warning(
+                    self, 
+                    'Lỗi định dạng file', 
+                    'File CSV này là file sản phẩm, không phải file thương hiệu.\n'
+                    'Vui lòng sử dụng chức năng "Nhập CSV" trong phần Quản lý sản phẩm.'
+                )
+                return
+
             # Validate headers
             required_headers = ['name']
             if not all(header in reader.fieldnames for header in required_headers):

@@ -557,6 +557,22 @@ class ProductManagementTab(QWidget):
                 QMessageBox.warning(self, 'Lỗi', 'File CSV trống hoặc không có dữ liệu.')
                 return
 
+            # Kiểm tra xem đây có phải là file thương hiệu không
+            product_required = ['brand', 'product_type', 'price', 'quantity']
+            has_product_required = all(header in reader.fieldnames for header in product_required)
+            
+            # Nếu có 'name' và 'country' nhưng không có các cột sản phẩm bắt buộc
+            if 'name' in reader.fieldnames and 'country' in reader.fieldnames and not has_product_required:
+                # Kiểm tra xem có phải là file thương hiệu không (chỉ có name và country, không có brand, product_type)
+                if 'brand' not in reader.fieldnames and 'product_type' not in reader.fieldnames:
+                    QMessageBox.warning(
+                        self, 
+                        'Lỗi định dạng file', 
+                        'File CSV này là file thương hiệu, không phải file sản phẩm.\n'
+                        'Vui lòng sử dụng chức năng "Nhập CSV" trong phần Quản lý thương hiệu.'
+                    )
+                    return
+
             # Validate headers
             required_headers = ['name', 'brand', 'product_type', 'price', 'quantity']
             if not all(header in reader.fieldnames for header in required_headers):
@@ -588,16 +604,11 @@ class ProductManagementTab(QWidget):
                         skipped_count += 1
                         continue
 
-                    # Kiểm tra brand
+                    # Kiểm tra brand - không cho phép tạo brand mới
                     brand = self.brand_controller.get_brand_by_name(brand_name)
                     if not brand:
-                        # Tạo brand mới
-                        success, message = self.brand_controller.create_brand(brand_name)
-                        if success:
-                            brand = self.brand_controller.get_brand_by_name(brand_name)
-                        else:
-                            skipped_count += 1
-                            continue
+                        skipped_count += 1
+                        continue
 
                     if product_type.lower() in ['mechanical', 'cơ']:
                         movement_type = (row.get('movement_type') or '').strip().lower()
