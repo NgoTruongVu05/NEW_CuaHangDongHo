@@ -65,6 +65,19 @@ class CreateInvoiceTab(QWidget):
 
         product_layout.addWidget(self.product_table)
 
+        # Pagination for products
+        pagination_layout = QHBoxLayout()
+        pagination_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.prev_btn = QPushButton("◀ Trước")
+        self.next_btn = QPushButton("Sau ▶")
+        self.page_label = QLabel("Trang 1/1")
+        self.prev_btn.clicked.connect(self.prev_page)
+        self.next_btn.clicked.connect(self.next_page)
+        pagination_layout.addWidget(self.prev_btn)
+        pagination_layout.addWidget(self.page_label)
+        pagination_layout.addWidget(self.next_btn)
+        product_layout.addLayout(pagination_layout)
+
         add_to_cart_btn = QPushButton('Thêm vào giỏ')
         add_to_cart_btn.setStyleSheet("""
             QPushButton {
@@ -106,6 +119,20 @@ class CreateInvoiceTab(QWidget):
         self.customer_table.setColumnWidth(0, 50)
 
         customer_layout.addWidget(self.customer_table)
+
+        # Pagination for customers
+        customer_pagination = QHBoxLayout()
+        customer_pagination.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.customer_prev_btn = QPushButton("◀ Trước")
+        self.customer_next_btn = QPushButton("Sau ▶")
+        self.customer_page_label = QLabel("Trang 1/1")
+        self.customer_prev_btn.clicked.connect(self.prev_customer_page)
+        self.customer_next_btn.clicked.connect(self.next_customer_page)
+        customer_pagination.addWidget(self.customer_prev_btn)
+        customer_pagination.addWidget(self.customer_page_label)
+        customer_pagination.addWidget(self.customer_next_btn)
+        customer_layout.addLayout(customer_pagination)
+
         customer_group.setLayout(customer_layout)
         left_layout.addWidget(customer_group)
 
@@ -165,12 +192,14 @@ class CreateInvoiceTab(QWidget):
     def load_products(self):
         self.all_products = self.watch_controller.get_available_watches()
         self.filtered_products = self.all_products[:]
-        self.display_products()
+        self.current_page = 1
+        self.display_page(self.current_page)
 
     def load_customers(self):
         self.all_customers = self.customer_controller.get_all_customers()
         self.filtered_customers = self.all_customers[:]
-        self.display_customers()
+        self.customer_current_page = 1
+        self.display_customer_page(self.customer_current_page)
 
     def search_products(self):
         search_text = self.product_search.text().strip().lower()
@@ -181,7 +210,8 @@ class CreateInvoiceTab(QWidget):
             ]
         else:
             self.filtered_products = self.all_products[:]
-        self.display_products()
+        self.current_page = 1
+        self.display_page(self.current_page)
 
     def search_customers(self):
         search_text = self.customer_search.text().strip()
@@ -192,12 +222,21 @@ class CreateInvoiceTab(QWidget):
             ]
         else:
             self.filtered_customers = self.all_customers[:]
-        self.display_customers()
+        self.customer_current_page = 1
+        self.display_customer_page(self.customer_current_page)
 
-    def display_products(self):
-        self.product_table.setRowCount(len(self.filtered_products))
+    def display_page(self, page):
+        self.product_table.setRowCount(0)
         
-        for row, product in enumerate(self.filtered_products):
+        data_source = self.filtered_products
+        start = (page - 1) * self.items_per_page
+        end = start + self.items_per_page
+        page_items = data_source[start:end]
+        
+        self.product_table.setRowCount(len(page_items))
+        self.product_table.verticalHeader().setDefaultSectionSize(30)
+        
+        for row, product in enumerate(page_items):
             checkbox = QCheckBox()
             checkbox.setStyleSheet("margin-left:10px;")
             self.product_table.setCellWidget(row, 0, checkbox)
@@ -209,22 +248,64 @@ class CreateInvoiceTab(QWidget):
             spin = QSpinBox()
             spin.setRange(1, product.quantity)
             spin.setValue(1)
+            spin.setFixedHeight(24)
+            spin.setStyleSheet("QSpinBox { padding: 0 2px; font-size: 13px; }")
             self.product_table.setCellWidget(row, 4, spin)
 
             self.product_table.setItem(row, 5, QTableWidgetItem(str(product.id)))
-
-    def display_customers(self):
-        self.customer_table.setRowCount(len(self.filtered_customers))
         
-        for row, customer in enumerate(self.filtered_customers):
+        total_pages = max(1, (len(data_source) + self.items_per_page - 1) // self.items_per_page)
+        self.page_label.setText(f"Trang {self.current_page}/{total_pages}")
+        
+        self.prev_btn.setEnabled(self.current_page > 1)
+        self.next_btn.setEnabled(self.current_page < total_pages)
+
+    def next_page(self):
+        total_pages = (len(self.filtered_products) + self.items_per_page - 1) // self.items_per_page
+        if self.current_page < total_pages:
+            self.current_page += 1
+            self.display_page(self.current_page)
+
+    def prev_page(self):
+        if self.current_page > 1:
+            self.current_page -= 1
+            self.display_page(self.current_page)
+
+    def display_customer_page(self, page):
+        data_source = self.filtered_customers
+        start = (page - 1) * self.items_per_page
+        end = start + self.items_per_page
+        page_items = data_source[start:end]
+        
+        self.customer_table.setRowCount(len(page_items))
+        
+        for row, customer in enumerate(page_items):
             checkbox = QCheckBox()
-            checkbox.stateChanged.connect(lambda state, r=row: self.select_single_customer(r))
+            checkbox.stateChanged.connect(lambda state, r=row: self.select_single_customer(r + start))
             self.customer_table.setCellWidget(row, 0, checkbox)
             self.customer_table.setItem(row, 1, QTableWidgetItem(customer.name))
             self.customer_table.setItem(row, 2, QTableWidgetItem(customer.phone or ''))
             self.customer_table.setItem(row, 3, QTableWidgetItem(customer.address or ''))
+        
+        total_pages = max(1, (len(data_source) + self.items_per_page - 1) // self.items_per_page)
+        self.customer_page_label.setText(f"Trang {self.customer_current_page}/{total_pages}")
+        
+        self.customer_prev_btn.setEnabled(self.customer_current_page > 1)
+        self.customer_next_btn.setEnabled(self.customer_current_page < total_pages)
+
+    def next_customer_page(self):
+        total_pages = (len(self.filtered_customers) + self.items_per_page - 1) // self.items_per_page
+        if self.customer_current_page < total_pages:
+            self.customer_current_page += 1
+            self.display_customer_page(self.customer_current_page)
+
+    def prev_customer_page(self):
+        if self.customer_current_page > 1:
+            self.customer_current_page -= 1
+            self.display_customer_page(self.customer_current_page)
 
     def select_single_customer(self, selected_row):
+        """Đảm bảo chỉ chọn 1 khách hàng duy nhất"""
         for row in range(self.customer_table.rowCount()):
             checkbox = self.customer_table.cellWidget(row, 0)
             if row != selected_row:
@@ -244,34 +325,54 @@ class CreateInvoiceTab(QWidget):
 
     def add_selected_products_to_cart(self):
         selected_products = []
-        
+        total_qty_in_cart = sum(item['quantity'] for item in self.cart)
+        selected_any = False
+
         for row in range(self.product_table.rowCount()):
             checkbox = self.product_table.cellWidget(row, 0)
             if checkbox and checkbox.isChecked():
+                selected_any = True
                 product_id = int(self.product_table.item(row, 5).text())
                 name = self.product_table.item(row, 1).text()
                 price = float(self.product_table.item(row, 2).text().replace(' VND', '').replace(',', ''))
+                available_qty = int(self.product_table.item(row, 3).text())
                 spin = self.product_table.cellWidget(row, 4)
-                quantity = spin.value()
+                qty = spin.value()
 
                 selected_products.append({
                     'id': product_id,
                     'name': name,
                     'price': price,
-                    'quantity': quantity
+                    'available_qty': available_qty,
+                    'quantity': qty
                 })
 
-        if not selected_products:
+        if not selected_any:
             QMessageBox.warning(self, "Lỗi", "Vui lòng chọn ít nhất một sản phẩm!")
             return
 
-        # Thêm vào giỏ hàng
-        for product in selected_products:
-            existing = next((item for item in self.cart if item['id'] == product['id']), None)
+        # Tính tổng số lượng sau khi thêm
+        total_selected_qty = sum(p['quantity'] for p in selected_products)
+        if total_qty_in_cart + total_selected_qty > 5:
+            remaining = max(0, 5 - total_qty_in_cart)
+            QMessageBox.warning(
+                self,
+                "Giới hạn giỏ hàng",
+                f"Tổng số lượng sản phẩm trong giỏ hàng không được vượt quá 5.\n"
+                f"Hiện tại bạn còn có thể thêm tối đa {remaining} sản phẩm."
+            )
+            return
+
+        # Nếu hợp lệ thì thêm từng sản phẩm
+        for p in selected_products:
+            existing = next((item for item in self.cart if item['id'] == p['id']), None)
             if existing:
-                existing['quantity'] += product['quantity']
+                if existing['quantity'] + p['quantity'] > p['available_qty']:
+                    QMessageBox.warning(self, "Lỗi", f"Sản phẩm '{p['name']}' chỉ còn {p['available_qty']} trong kho.")
+                    continue
+                existing['quantity'] += p['quantity']
             else:
-                self.cart.append(product)
+                self.cart.append({'id': p['id'], 'name': p['name'], 'price': p['price'], 'quantity': p['quantity']})
 
         self.update_cart_display()
 

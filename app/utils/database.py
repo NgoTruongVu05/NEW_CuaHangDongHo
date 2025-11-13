@@ -109,6 +109,7 @@ class Database:
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS repair_orders (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    product_id INTEGER,
                     customer_id INTEGER,
                     employee_id TEXT,
                     issue_description TEXT NOT NULL,
@@ -117,9 +118,16 @@ class Database:
                     estimated_completion TEXT,
                     status TEXT DEFAULT 'pending',
                     FOREIGN KEY (customer_id) REFERENCES customers (id),
+                    FOREIGN KEY (product_id) REFERENCES products (id),
                     FOREIGN KEY (employee_id) REFERENCES employees (id)
                 )
             ''')
+            
+            # Thêm cột product_id nếu chưa có (migration)
+            try:
+                cursor.execute('ALTER TABLE repair_orders ADD COLUMN product_id INTEGER')
+            except sqlite3.OperationalError:
+                pass  # Column already exists
             
             # Thêm admin mặc định - QL + 6 SỐ CUỐI
             cursor.execute('''

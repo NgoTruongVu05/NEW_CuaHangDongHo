@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
                              QGraphicsDropShadowEffect, QScrollArea, QFormLayout,
                              QFileDialog, QProgressDialog)
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QColor, QFont
+from PyQt6.QtGui import QColor, QFont, QIntValidator, QDoubleValidator
 import csv
 from app.controllers.watch_controller import WatchController
 from app.controllers.brand_controller import BrandController
@@ -22,22 +22,35 @@ class ProductManagementTab(QWidget):
         self.total_pages = 1
         self.total_products = 0
         self.current_filters = {}
+        self.order_by = 'p.quantity'
+        self.order_dir = 'ASC'
         self.init_ui()
         self.load_data()
 
     def _parse_price_string(self, s):
+        """
+        Chuyển chuỗi giá (có thể có dấu phẩy/điểm/chuỗi 'VND') thành float.
+        Nếu không parse được trả về 0.
+        """
         if not s:
             return 0.0
         if isinstance(s, (int, float)):
             return float(s)
         s = str(s).strip()
-        s = s.replace('.', '').replace(',', '')
+        # loại bỏ chữ, dấu cách, giữ số
+        import re
+        s = re.sub(r'[^\d\-\.]', '', s)
         if not s:
             return 0.0
         try:
             return float(s)
-        except:
-            return 0.0
+        except Exception:
+            try:
+                # thay ',' bằng '' và thử lại (đề phòng 1,200,000)
+                s2 = s.replace(',', '')
+                return float(s2)
+            except Exception:
+                return 0.0
 
     def _parse_int_field(self, value, default=0):
         if value is None or value == "":
@@ -125,12 +138,14 @@ class ProductManagementTab(QWidget):
         price_min_label = QLabel('Giá từ:')
         self.price_min_input = QLineEdit()
         self.price_min_input.setPlaceholderText('VNĐ')
+        self.price_min_input.setMaxLength(20)
         self.price_min_input.textChanged.connect(lambda: self._format_input(self.price_min_input))
         self.price_min_input.textChanged.connect(self.filter_products)
 
         price_max_label = QLabel('đến:')
         self.price_max_input = QLineEdit()
         self.price_max_input.setPlaceholderText('VNĐ')
+        self.price_max_input.setMaxLength(20)
         self.price_max_input.textChanged.connect(lambda: self._format_input(self.price_max_input))
         self.price_max_input.textChanged.connect(self.filter_products)
 
@@ -144,6 +159,40 @@ class ProductManagementTab(QWidget):
         filter_layout.addWidget(self.price_max_input)
         filter_layout.addStretch()
         layout.addLayout(filter_layout)
+
+        # Advanced filters
+        advanced_layout = QHBoxLayout()
+        self.power_reserve_label = QLabel('Thời gian trữ cót (giờ):')
+        self.power_reserve_input = QLineEdit()
+        self.power_reserve_input.setPlaceholderText('(tối đa 3 số)')
+        self.power_reserve_input.setMaxLength(3)
+        self.power_reserve_input.setValidator(QDoubleValidator(0, 999, 1))
+        self.power_reserve_input.textChanged.connect(self.filter_products)
+
+        self.battery_life_label = QLabel('Thời lượng pin (năm):')
+        self.battery_life_input = QLineEdit()
+        self.battery_life_input.setPlaceholderText('(tối đa 2 số)')
+        self.battery_life_input.setMaxLength(2)
+        self.battery_life_input.setValidator(QIntValidator(0, 99))
+        self.battery_life_input.textChanged.connect(self.filter_products)
+
+        self.connectivity_label = QLabel('Kết nối:')
+        self.connectivity_filter = QComboBox()
+        self.connectivity_filter.addItems(['Tất cả', 'Bluetooth', 'Wi-Fi', 'GPS', 'NFC'])
+        self.connectivity_filter.currentTextChanged.connect(self.filter_products)
+
+        advanced_layout.addWidget(self.power_reserve_label)
+        advanced_layout.addWidget(self.power_reserve_input)
+        advanced_layout.addWidget(self.battery_life_label)
+        advanced_layout.addWidget(self.battery_life_input)
+        advanced_layout.addWidget(self.connectivity_label)
+        advanced_layout.addWidget(self.connectivity_filter)
+        advanced_layout.addStretch()
+        layout.addLayout(advanced_layout)
+
+        # Connect type filter to update advanced filters visibility
+        self.type_filter.currentTextChanged.connect(self.update_advanced_filters_visibility)
+        self.update_advanced_filters_visibility()  # Initial setup
 
         # Controls
         controls_layout = QHBoxLayout()
@@ -309,89 +358,91 @@ class ProductManagementTab(QWidget):
         return qty_widget
 
     def load_data(self, filters=None):
+        """
+        Lấy dữ liệu sản phẩm kèm tên brand qua JOIN với pagination và filtering,
+        rồi fill vào 8 cột của table.
+        """
         if filters is None:
             filters = self.current_filters
 
         try:
-            # Lấy tất cả sản phẩm
-            self.products = self.watch_controller.get_all_watches()
+            # Calculate offset for pagination
+            offset = (self.current_page - 1) * self.page_size
             
-            # Áp dụng filters
-            if filters:
-                search_text = filters.get('search', '')
-                brand_filter = filters.get('brand', 'Tất cả')
-                type_filter = filters.get('type', 'Tất cả')
-                price_min = filters.get('price_min')
-                price_max = filters.get('price_max')
-                
-                filtered_products = self.products
-                
-                # Filter by search text
-                if search_text:
-                    filtered_products = [p for p in filtered_products 
-                                       if search_text.lower() in p.name.lower()]
-                
-                # Filter by brand
-                if brand_filter != 'Tất cả':
-                    filtered_products = [p for p in filtered_products 
-                                       if self._get_brand_name(p.brand_id) == brand_filter]
-                
-                # Filter by type
-                if type_filter != 'Tất cả':
-                    if type_filter == 'Đồng hồ cơ':
-                        filtered_products = [p for p in filtered_products 
-                                           if hasattr(p, 'product_type') and p.product_type == 'mechanical']
-                    elif type_filter == 'Đồng hồ điện tử':
-                        filtered_products = [p for p in filtered_products 
-                                           if hasattr(p, 'product_type') and p.product_type == 'electronic']
-                
-                # Filter by price
-                if price_min is not None:
-                    filtered_products = [p for p in filtered_products if p.price >= price_min]
-                
-                if price_max is not None:
-                    filtered_products = [p for p in filtered_products if p.price <= price_max]
-                
-                self.products = filtered_products
-
-            self.total_products = len(self.products)
+            # Get watches with filters using server-side filtering
+            self.products, self.total_products = self.watch_controller.get_watches_with_filters(
+                filters, self.order_by, self.order_dir, self.page_size, offset
+            )
+            
+            # Calculate total pages
             self.total_pages = max(1, (self.total_products + self.page_size - 1) // self.page_size)
             
+            # Ensure current_page is within bounds
             if self.current_page > self.total_pages:
                 self.current_page = self.total_pages
             if self.current_page < 1:
                 self.current_page = 1
 
-            # Paginate
-            start_idx = (self.current_page - 1) * self.page_size
-            end_idx = start_idx + self.page_size
-            display_products = self.products[start_idx:end_idx]
+            # Set table rows
+            self.table.setRowCount(len(self.products))
 
-            self.table.setRowCount(len(display_products))
+            for row, product in enumerate(self.products):
+                pid = product.id
+                name = product.name or ''
+                # Use brand_name from the join if available, otherwise get it
+                if hasattr(product, 'brand_name'):
+                    brand = product.brand_name or ''
+                else:
+                    brand = self._get_brand_name(product.brand_id)
+                
+                ptype = getattr(product, 'product_type', '')
+                if ptype and ptype.lower() in ('mechanical', 'm', 'coil'):
+                    type_text = "Đồng hồ cơ"
+                elif ptype and ptype.lower() in ('digital', 'smart', 'electronic'):
+                    type_text = "Đồng hồ điện tử"
+                else:
+                    type_text = ptype or ''
+                
+                price = product.price or 0
+                quantity = product.quantity if product.quantity is not None else 0
 
-            for row, product in enumerate(display_products):
-                # ID
-                self.table.setItem(row, 0, QTableWidgetItem(str(product.id)))
-                
-                # Tên
-                self.table.setItem(row, 1, QTableWidgetItem(product.name))
-                
-                # Thương hiệu
-                brand_name = self._get_brand_name(product.brand_id)
-                self.table.setItem(row, 2, QTableWidgetItem(brand_name))
-                
-                # Loại
-                type_text = "Đồng hồ cơ" if hasattr(product, 'product_type') and product.product_type == 'mechanical' else "Đồng hồ điện tử"
-                self.table.setItem(row, 3, QTableWidgetItem(type_text))
-                
-                # Giá
-                self.table.setItem(row, 4, QTableWidgetItem(f"{product.price:,.0f} VND"))
-                
-                # Số lượng
-                qty_widget = self._create_qty_widget(product.quantity)
+                # Col 0: ID
+                id_item = QTableWidgetItem(str(pid))
+                id_item.setFlags(id_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+                self.table.setItem(row, 0, id_item)
+
+                # Col 1: Tên
+                name_item = QTableWidgetItem(name)
+                name_item.setFlags(name_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+                self.table.setItem(row, 1, name_item)
+
+                # Col 2: Thương hiệu
+                brand_item = QTableWidgetItem(brand)
+                brand_item.setFlags(brand_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+                self.table.setItem(row, 2, brand_item)
+
+                # Col 3: Loại
+                type_item = QTableWidgetItem(type_text)
+                type_item.setFlags(type_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+                self.table.setItem(row, 3, type_item)
+
+                # Col 4: Giá
+                if price is None:
+                    price_text = ''
+                else:
+                    try:
+                        price_text = f"{price:,.0f} VND"
+                    except:
+                        price_text = str(price)
+                price_item = QTableWidgetItem(price_text)
+                price_item.setFlags(price_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+                self.table.setItem(row, 4, price_item)
+
+                # Col 5: Số lượng
+                qty_widget = self._create_qty_widget(quantity)
                 self.table.setCellWidget(row, 5, qty_widget)
-                
-                # Chi tiết sản phẩm
+
+                # Col 6: Chi tiết sản phẩm
                 detail_btn = QPushButton('Xem chi tiết')
                 detail_btn.setStyleSheet('''
                     QPushButton {
@@ -406,10 +457,10 @@ class ProductManagementTab(QWidget):
                         background-color: #27AE60;
                     }
                 ''')
-                detail_btn.clicked.connect(lambda checked, pid=product.id: self.show_product_details(pid))
+                detail_btn.clicked.connect(lambda checked, pid=pid: self.show_product_details(pid))
                 self.table.setCellWidget(row, 6, detail_btn)
-                
-                # Hành động
+
+                # Col 7: Hành động
                 action_widget = QWidget()
                 action_layout = QHBoxLayout(action_widget)
                 action_layout.setContentsMargins(5, 2, 5, 2)
@@ -430,7 +481,7 @@ class ProductManagementTab(QWidget):
                             background-color: #2980B9;
                         }
                     ''')
-                    edit_btn.clicked.connect(lambda checked, pid=product.id: self.edit_product(pid))
+                    edit_btn.clicked.connect(lambda checked, pid=pid: self.edit_product(pid))
                     action_layout.addWidget(edit_btn)
 
                     delete_btn = QPushButton('Xóa')
@@ -448,15 +499,16 @@ class ProductManagementTab(QWidget):
                             background-color: #C0392B;
                         }
                     ''')
-                    delete_btn.clicked.connect(lambda checked, pid=product.id: self.delete_product(pid))
+                    delete_btn.clicked.connect(lambda checked, pid=pid: self.delete_product(pid))
                     action_layout.addWidget(delete_btn)
 
                 action_layout.addStretch()
-                for r in range(self.table.rowCount()):
-                    self.table.setRowHeight(r, 40)
                 self.table.setCellWidget(row, 7, action_widget)
+                
+                # Set row height
+                self.table.setRowHeight(row, 40)
 
-            # Update brand filter
+            # Populate brand filter with all brands from database (always refresh) but preserve selection
             current_brand = self.brand_filter.currentText()
             self.brand_filter.blockSignals(True)
             self.brand_filter.clear()
@@ -464,14 +516,16 @@ class ProductManagementTab(QWidget):
             
             brands = self.brand_controller.get_all_brands()
             for brand in brands:
-                self.brand_filter.addItem(brand.name)
+                if brand.name:
+                    self.brand_filter.addItem(brand.name)
             
+            # Restore selection if possible
             if current_brand and current_brand in [self.brand_filter.itemText(i) for i in range(self.brand_filter.count())]:
                 self.brand_filter.setCurrentText(current_brand)
             self.brand_filter.blockSignals(False)
 
         except Exception as e:
-            QMessageBox.critical(self, 'Lỗi tải dữ liệu', f'Không thể tải dữ liệu sản phẩm: {str(e)}')
+            QMessageBox.critical(self, 'Lỗi tải dữ liệu', f'Không thể tải dữ liệu sản phẩm từ cơ sở dữ liệu.\nChi tiết lỗi: {str(e)}')
             self.products = []
             self.total_products = 0
             self.total_pages = 1
@@ -487,24 +541,85 @@ class ProductManagementTab(QWidget):
         return brand.name if brand else "Unknown"
 
     def filter_products(self):
+        """
+        Collect filter values and reload data with filters applied.
+        """
         search_text = self.search_input.text().strip()
         selected_brand = self.brand_filter.currentText()
         selected_type = self.type_filter.currentText()
 
-        price_min = self._parse_price_string(self.price_min_input.text()) if self.price_min_input.text() else None
-        price_max = self._parse_price_string(self.price_max_input.text()) if self.price_max_input.text() else None
+        # Price filters (parse robust)
+        price_min_text = self.price_min_input.text().strip()
+        price_max_text = self.price_max_input.text().strip()
+        price_min = None
+        price_max = None
+        if price_min_text:
+            price_min = self._parse_price_string(price_min_text)
+        if price_max_text:
+            price_max = self._parse_price_string(price_max_text)
 
+        # Advanced filters
+        power_reserve_min_text = self.power_reserve_input.text().strip()
+        try:
+            power_reserve_min = float(power_reserve_min_text) if power_reserve_min_text else None
+        except ValueError:
+            power_reserve_min = None
+
+        battery_life_min_text = self.battery_life_input.text().strip()
+        try:
+            battery_life_min = float(battery_life_min_text) if battery_life_min_text else None
+        except ValueError:
+            battery_life_min = None
+
+        selected_connectivity = self.connectivity_filter.currentText()
+
+        # Collect filters
         filters = {
             'search': search_text,
             'brand': selected_brand,
             'type': selected_type,
             'price_min': price_min,
-            'price_max': price_max
+            'price_max': price_max,
+            'power_reserve_min': power_reserve_min,
+            'battery_life_min': battery_life_min,
+            'connectivity': selected_connectivity
         }
 
+        # Update current filters and reset to first page, then load data
         self.current_filters = filters
         self.current_page = 1
         self.load_data()
+
+    def update_advanced_filters_visibility(self):
+        """
+        Update visibility of advanced filters based on selected watch type.
+        """
+        selected_type = self.type_filter.currentText()
+
+        if selected_type == 'Tất cả':
+            # Show all filters
+            self.power_reserve_label.show()
+            self.power_reserve_input.show()
+            self.battery_life_label.show()
+            self.battery_life_input.show()
+            self.connectivity_label.show()
+            self.connectivity_filter.show()
+        elif selected_type == 'Đồng hồ cơ':
+            # Show only mechanical watch filters
+            self.power_reserve_label.show()
+            self.power_reserve_input.show()
+            self.battery_life_label.hide()
+            self.battery_life_input.hide()
+            self.connectivity_label.hide()
+            self.connectivity_filter.hide()
+        elif selected_type == 'Đồng hồ điện tử':
+            # Show only digital watch filters
+            self.power_reserve_label.hide()
+            self.power_reserve_input.hide()
+            self.battery_life_label.show()
+            self.battery_life_input.show()
+            self.connectivity_label.show()
+            self.connectivity_filter.show()
 
     def show_product_details(self, product_id):
         from .dialogs.product_detail_dialog import ProductDetailDialog

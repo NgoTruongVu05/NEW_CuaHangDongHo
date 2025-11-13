@@ -1,7 +1,7 @@
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QTableWidget, 
                              QTableWidgetItem, QPushButton, QMessageBox,
                              QHeaderView, QHBoxLayout, QLabel, QDialog,
-                             QLineEdit, QDateEdit, QComboBox, QTextEdit)
+                             QLineEdit, QDateEdit, QComboBox, QTextEdit, QGridLayout, QGroupBox)
 from PyQt6.QtCore import Qt, QDate
 from datetime import datetime
 from app.controllers.invoice_controller import InvoiceController
@@ -117,9 +117,9 @@ class InvoiceManagementTab(QWidget):
         
         # Search layout for repairs
         self.repair_search_layout = QHBoxLayout()
-        self.repair_search_layout.addWidget(QLabel('Tìm theo tên khách hàng:'))
+        self.repair_search_layout.addWidget(QLabel('Tìm theo tên đồng hồ:'))
         self.repair_search_input = QLineEdit()
-        self.repair_search_input.setPlaceholderText('Nhập tên khách hàng cần tìm...')
+        self.repair_search_input.setPlaceholderText('Nhập tên đồng hồ cần tìm...')
         self.repair_search_input.textChanged.connect(self.load_data)
         self.repair_search_layout.addWidget(self.repair_search_input)
         
@@ -312,33 +312,44 @@ class InvoiceManagementTab(QWidget):
         to_date = self.repair_date_to.date().toString('yyyy-MM-dd')
         search_text = self.repair_search_input.text().strip().lower()
         
-        repairs = self.repair_controller.get_all_repairs()
-        # Filter by date and search text
-        filtered_repairs = []
-        for repair in repairs:
-            if from_date <= repair.created_date <= to_date:
-                if not search_text:
-                    filtered_repairs.append(repair)
-                else:
-                    # Tìm theo tên khách hàng (cần lấy thông tin khách hàng)
-                    customer = self.repair_controller.customer_service.get_customer_by_id(repair.customer_id)
-                    if customer and search_text in customer.name.lower():
-                        filtered_repairs.append(repair)
+        cursor = self.db.conn.cursor()
+        
+        query = '''
+            SELECT r.id, c.name, e.full_name, p.name,
+                   COALESCE(r.actual_cost, 0.0) as actual_cost, r.created_date, 
+                   r.estimated_completion, r.status
+            FROM repair_orders r
+            LEFT JOIN products p ON r.product_id = p.id
+            LEFT JOIN customers c ON r.customer_id = c.id
+            LEFT JOIN employees e ON r.employee_id = e.id
+            WHERE DATE(r.created_date) BETWEEN ? AND ?
+        '''
+        params = [from_date, to_date]
+        
+        if search_text:
+            query += ' AND LOWER(p.name) LIKE ?'
+            params.append(f'%{search_text}%')
+        
+        query += ' ORDER BY r.id DESC'
+        
+        cursor.execute(query, params)
+        repairs = cursor.fetchall()
         
         self.setup_repairs_table()
-        self.table.setRowCount(len(filtered_repairs))
+        self.table.setRowCount(len(repairs))
         
-        for row, repair in enumerate(filtered_repairs):
-            customer = self.repair_controller.customer_service.get_customer_by_id(repair.customer_id)
-            employee = self.repair_controller.repair_service.db.get_employee_by_id(repair.employee_id)
+        for row, rep in enumerate(repairs):
+            (rid, cust_name, emp_name, watch_desc,
+             actual_cost, created_date, est_completion, status) = rep
             
-            self.table.setItem(row, 0, QTableWidgetItem(str(repair.id)))
-            self.table.setItem(row, 1, QTableWidgetItem(customer.name if customer else 'Khách lẻ'))
-            self.table.setItem(row, 2, QTableWidgetItem(employee[3] if employee else ''))  # employee name
-            self.table.setItem(row, 3, QTableWidgetItem(f"{repair.actual_cost:,.0f} VND"))
-            self.table.setItem(row, 4, QTableWidgetItem(_format_date(repair.created_date)))
-            self.table.setItem(row, 5, QTableWidgetItem(_format_date(repair.estimated_completion)))
-            self.table.setItem(row, 6, QTableWidgetItem(repair.status))
+            self.table.setItem(row, 0, QTableWidgetItem(str(rid)))
+            self.table.setItem(row, 1, QTableWidgetItem(str(cust_name) if cust_name else 'Khách lẻ'))
+            self.table.setItem(row, 2, QTableWidgetItem(str(emp_name) if emp_name else ''))
+            self.table.setItem(row, 3, QTableWidgetItem(str(watch_desc) if watch_desc else ''))
+            self.table.setItem(row, 4, QTableWidgetItem(f"{float(actual_cost):,.0f} VND"))
+            self.table.setItem(row, 5, QTableWidgetItem(_format_date(created_date)))
+            self.table.setItem(row, 6, QTableWidgetItem(_format_date(est_completion)))
+            self.table.setItem(row, 7, QTableWidgetItem(self.get_repair_status_text(status)))
 
             action_widget = QWidget()
             action_layout = QHBoxLayout(action_widget)
@@ -389,7 +400,7 @@ class InvoiceManagementTab(QWidget):
                 action_layout.addWidget(edit_btn)
             action_layout.addStretch()
 
-            self.table.setCellWidget(row, 7, action_widget)
+            self.table.setCellWidget(row, 8, action_widget)
             self.table.setRowHeight(row, 46)
     
     def setup_invoices_table(self):
@@ -407,21 +418,22 @@ class InvoiceManagementTab(QWidget):
         header.setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)
     
     def setup_repairs_table(self):
-        self.table.setColumnCount(8)
+        self.table.setColumnCount(9)
         self.table.setHorizontalHeaderLabels([
-            'ID', 'Khách hàng', 'Nhân viên', 'Chi phí', 'Ngày tạo', 'Dự kiến hoàn thành', 'Trạng thái', 'Hành động'
+            'ID', 'Khách hàng', 'Nhân viên', 'Đồng hồ', 'Chi phí', 'Ngày tạo', 'Dự kiến hoàn thành', 'Trạng thái', 'Hành động'
         ])
         
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
         header.setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(6, QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(7, QHeaderView.ResizeMode.Fixed)
-        self.table.setColumnWidth(7, 180)
+        header.setSectionResizeMode(7, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(8, QHeaderView.ResizeMode.Fixed)
+        self.table.setColumnWidth(8, 180)
 
     def show_invoice_details(self, invoice_id):
         invoice_data = self.invoice_controller.get_invoice_by_id(invoice_id)
@@ -496,53 +508,141 @@ class InvoiceManagementTab(QWidget):
         dialog.exec()
     
     def view_repair_details(self, repair_id):
-        repair = self.repair_controller.get_repair_by_id(repair_id)
-        if not repair:
+        cursor = self.db.conn.cursor()
+        cursor.execute('''
+            SELECT r.id, r.created_date, r.estimated_completion, r.actual_cost,
+                   r.issue_description, r.status, p.name,
+                   c.name, c.phone, c.address, e.full_name
+            FROM repair_orders r
+            LEFT JOIN products p ON r.product_id = p.id
+            LEFT JOIN customers c ON r.customer_id = c.id
+            LEFT JOIN employees e ON r.employee_id = e.id
+            WHERE r.id = ?
+        ''', (repair_id,))
+        header = cursor.fetchone()
+
+        if not header:
             QMessageBox.warning(self, 'Lỗi', f'Không tìm thấy đơn sửa chữa #{repair_id}')
             return
 
-        customer = self.repair_controller.customer_service.get_customer_by_id(repair.customer_id)
-        employee = self.repair_controller.repair_service.db.get_employee_by_id(repair.employee_id)
-        
+        # Giải nén dữ liệu
+        rid, created_date, est_completion, actual_cost, issue_desc, status, watch_desc, \
+        cust_name, cust_phone, cust_addr, emp_name = header
+
+        # Tạo dialog
         dialog = QDialog(self)
         dialog.setWindowTitle(f'Chi tiết đơn sửa chữa #{repair_id}')
         dialog.setMinimumWidth(560)
-        
+        dialog.setAutoFillBackground(True)
+        palette = dialog.palette()
+        palette.setColor(dialog.backgroundRole(), self.palette().color(self.backgroundRole()))
+        palette.setColor(dialog.foregroundRole(), self.palette().color(self.foregroundRole()))
+        dialog.setPalette(palette)
+        dialog.setStyleSheet('''
+            QTableWidget {
+                selection-background-color: #FF7043;
+                selection-color: white;
+            }
+            QPushButton {
+                background-color: #388E3C;
+                color: white;
+                border-radius: 6px;
+                padding: 6px 12px;
+            }
+            QPushButton:hover {
+                background-color: #2e7d32;
+            }
+        ''')
+
         layout = QVBoxLayout(dialog)
-        
-        # Header
-        title_label = QLabel(f'ĐƠN SỬA CHỮA #{repair_id}')
+        layout.setSpacing(15)
+        layout.setContentsMargins(20, 20, 20, 20)
+
+        # Tiêu đề
+        title_label = QLabel(f'ĐƠN SỬA CHỮA #{rid}')
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title_label.setStyleSheet("font-size: 16px; font-weight: bold; color: white;")
         layout.addWidget(title_label)
-        
-        # Repair info
-        info_layout = QVBoxLayout()
-        info_layout.addWidget(QLabel(f'Ngày tạo: {_format_date(repair.created_date)}'))
-        info_layout.addWidget(QLabel(f'Nhân viên: {employee[3] if employee else ""}'))
-        info_layout.addWidget(QLabel(f'Khách hàng: {customer.name if customer else ""}'))
-        info_layout.addWidget(QLabel(f'Trạng thái: {repair.status}'))
-        info_layout.addWidget(QLabel(f'Dự kiến hoàn thành: {_format_date(repair.estimated_completion)}'))
-        info_layout.addWidget(QLabel(f'Chi phí: {repair.actual_cost:,.0f} VND'))
-        
+
+        # Thông tin cơ bản
+        info_layout = QGridLayout()
+        info_layout.setSpacing(10)
+
+        # Cột trái
+        info_layout.addWidget(QLabel('<b>Ngày tạo:</b>'), 0, 0)
+        info_layout.addWidget(QLabel(_format_date(created_date)), 0, 1)
+        info_layout.addWidget(QLabel('<b>Nhân viên:</b>'), 1, 0)
+        info_layout.addWidget(QLabel(emp_name or 'Chưa có'), 1, 1)
+        info_layout.addWidget(QLabel('<b>Trạng thái:</b>'), 2, 0)
+        status_text = self.get_repair_status_text(status)
+        status_label = QLabel(status_text)
+        status_label.setStyleSheet(f"color: {'#E67E22' if status == 'Chờ xử lý' else '#27AE60' if status == 'Hoàn thành' else '#E74C3C'}; font-weight: bold;")
+        info_layout.addWidget(status_label, 2, 1)
+
+        # Cột phải
+        info_layout.addWidget(QLabel('<b>Khách hàng:</b>'), 0, 2)
+        info_layout.addWidget(QLabel(cust_name or 'Khách lẻ'), 0, 3)
+        if cust_phone:
+            info_layout.addWidget(QLabel('<b>SĐT:</b>'), 1, 2)
+            info_layout.addWidget(QLabel(cust_phone), 1, 3)
+        if cust_addr:
+            info_layout.addWidget(QLabel('<b>Địa chỉ:</b>'), 2, 2)
+            info_layout.addWidget(QLabel(cust_addr), 2, 3)
+
         layout.addLayout(info_layout)
-        
-        # Issue description
+
+        # Thông tin đồng hồ và chi phí
+        detail_layout = QGridLayout()
+        detail_layout.setSpacing(10)
+        if watch_desc:
+            detail_layout.addWidget(QLabel('<b>Đồng hồ:</b>'), 0, 0)
+            detail_layout.addWidget(QLabel(watch_desc), 0, 1)
+        detail_layout.addWidget(QLabel('<b>Dự kiến hoàn thành:</b>'), 1, 0)
+        detail_layout.addWidget(QLabel(_format_date(est_completion)), 1, 1)
+        detail_layout.addWidget(QLabel('<b>Chi phí:</b>'), 2, 0)
+        detail_layout.addWidget(QLabel(f"{float(actual_cost):,.0f} VND"), 2, 1)
+        layout.addLayout(detail_layout)
+
+        # Mô tả lỗi
         issue_group = QGroupBox("Mô tả lỗi")
         issue_layout = QVBoxLayout()
         issue_text = QTextEdit()
-        issue_text.setPlainText(repair.issue_description)
+        issue_text.setPlainText(issue_desc or '')
         issue_text.setReadOnly(True)
         issue_layout.addWidget(issue_text)
         issue_group.setLayout(issue_layout)
         layout.addWidget(issue_group)
-        
+
         # Close button
+        btn_layout = QHBoxLayout()
         close_btn = QPushButton('Đóng')
+        close_btn.setStyleSheet('''
+            QPushButton {
+                background-color: #3498DB;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 8px 15px;
+                min-width: 80px;
+            }
+            QPushButton:hover {
+                background-color: #2980B9;
+            }
+        ''')
         close_btn.clicked.connect(dialog.accept)
-        layout.addWidget(close_btn)
-        
+        btn_layout.addStretch()
+        btn_layout.addWidget(close_btn)
+        layout.addLayout(btn_layout)
+
         dialog.exec()
+    
+    def get_repair_status_text(self, status):
+        status_map = {
+            'Chờ xử lý': 'Chờ xử lý',
+            'Hoàn thành': 'Hoàn thành',
+            'Đã hủy': 'Đã hủy'
+        }
+        return status_map.get(status, status)
     
     def edit_repair(self, repair_id):
         from .dialogs.edit_repair_dialog import EditRepairDialog

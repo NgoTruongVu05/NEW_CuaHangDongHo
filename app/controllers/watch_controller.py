@@ -19,6 +19,14 @@ class WatchController:
     def get_available_watches(self) -> List[Union[MechanicalWatch, ElectronicWatch]]:
         return self.watch_service.get_available_watches()
     
+    def get_watches_with_filters(self, filters: dict, order_by: str = 'p.quantity', order_dir: str = 'ASC',
+                                  page_size: int = 50, offset: int = 0) -> Tuple[List[Union[MechanicalWatch, ElectronicWatch]], int]:
+        """
+        Get watches with filters, ordering, and pagination.
+        Returns: (watches_list, total_count)
+        """
+        return self.watch_service.get_watches_with_filters(filters, order_by, order_dir, page_size, offset)
+    
     def create_mechanical_watch(self, name: str, brand_name: str, price: float, 
                               quantity: int, description: str = "", movement_type: str = "",
                               power_reserve: int = 0, water_resistant: bool = False) -> Tuple[bool, str]:

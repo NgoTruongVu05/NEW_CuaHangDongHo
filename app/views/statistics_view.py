@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                              QGroupBox, QGridLayout, QComboBox, QSpinBox,
-                             QPushButton, QFrame)
+                             QPushButton, QFrame, QToolTip)
 from PyQt6.QtCore import QDate
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
@@ -57,6 +57,11 @@ class StatisticsTab(QWidget):
         self.top_types_btn = QPushButton('Sản phẩm bán chạy')
         self.top_types_btn.setFixedHeight(36)
         self.top_types_btn.clicked.connect(lambda: self.switch_statistics("top_types"))
+
+        QToolTip.setFont(self.font())
+        self.revenue_btn.setToolTip('Xem doanh thu bán hàng và sửa chữa theo thời gian')
+        self.customer_btn.setToolTip('Theo dõi khách hàng mới và khách hàng thân thiết')
+        self.top_types_btn.setToolTip('Thống kê top sản phẩm bán chạy trong giai đoạn chọn')
 
         for b in (self.revenue_btn, self.customer_btn, self.top_types_btn):
             button_layout.addWidget(b)
@@ -201,63 +206,88 @@ class StatisticsTab(QWidget):
         
         if self.current_mode == "revenue":
             if month == 'Tất cả':
-                monthly_data = self.statistics_controller.get_monthly_revenue(year)
-                if monthly_data:
-                    months = [f'T{i+1}' for i in range(len(monthly_data))]
-                    revenues = [data[1] for data in monthly_data]
-                    
-                    ax = self.figure.add_subplot(111)
-                    ax.set_facecolor('#353535')
-                    bars = ax.bar(months, revenues, color='#3498DB')
-                    ax.set_ylabel('Doanh thu (VND)', color='white')
-                    ax.yaxis.set_major_formatter(mtick.StrMethodFormatter("{x:,.0f}"))
-                    ax.tick_params(axis='y', colors='white')
-                    ax.tick_params(axis='x', colors='white')
-                    ax.set_title(f'Doanh thu theo tháng năm {year}', color='white')
-                    
-                    # Add value labels on bars
-                    for bar in bars:
-                        height = bar.get_height()
-                        ax.text(bar.get_x() + bar.get_width()/2., height,
-                               f'{height:,.0f}',
-                               ha='center', va='bottom', color='white')
-                else:
-                    ax = self.figure.add_subplot(111)
-                    ax.set_facecolor('#353535')
-                    ax.text(0.5, 0.5, 'Không có dữ liệu doanh thu', 
-                           ha='center', va='center', color='white')
-            
+                breakdown = self.statistics_controller.get_monthly_revenue_breakdown(year)
+                labels = [f'T{int(item[0])}' for item in breakdown]
+                sales_data = [item[1] for item in breakdown]
+                repair_data = [item[2] for item in breakdown]
+                x_label = 'Tháng'
+                title = f'Doanh thu bán hàng & sửa chữa năm {year}'
+                rotation = 0
             else:
-                # Hiển thị doanh thu theo ngày trong tháng
+                breakdown = self.statistics_controller.get_daily_revenue_breakdown(month, year)
+                labels = [str(int(item[0])) for item in breakdown]
+                sales_data = [item[1] for item in breakdown]
+                repair_data = [item[2] for item in breakdown]
+                x_label = 'Ngày'
+                title = f'Doanh thu bán hàng & sửa chữa tháng {month}/{year}'
+                rotation = 45
+
+            if breakdown:
+                x = np.arange(len(labels))
                 ax = self.figure.add_subplot(111)
                 ax.set_facecolor('#353535')
-                ax.text(0.5, 0.5, f'Biểu đồ doanh thu chi tiết theo ngày\ncho tháng {month}/{year}', 
-                       ha='center', va='center', color='white')
+                ax.plot(x, sales_data, marker='o', label='Doanh thu bán hàng', color='#3498DB', linewidth=2)
+                ax.plot(x, repair_data, marker='s', label='Doanh thu sửa chữa', color='#E74C3C', linewidth=2)
+                ax.set_xticks(x)
+                ax.set_xticklabels(labels, color='white', rotation=rotation)
+                ax.set_ylabel('Doanh thu (VND)', color='white')
+                ax.set_xlabel(x_label, color='white')
+                ax.yaxis.set_major_formatter(mtick.StrMethodFormatter("{x:,.0f}"))
+                ax.tick_params(axis='y', colors='white', labelcolor='white')
+                ax.grid(True, alpha=0.3, color='white')
+                ax.set_title(title, color='white', fontsize=12, fontweight='bold')
+                legend = ax.legend(frameon=True)
+                legend.get_frame().set_facecolor('#2C3E50')
+                legend.get_frame().set_edgecolor('white')
+                for text in legend.get_texts():
+                    text.set_color('white')
+            else:
+                ax = self.figure.add_subplot(111)
+                ax.set_facecolor('#353535')
+                ax.text(0.5, 0.5, 'Không có dữ liệu doanh thu trong khoảng thời gian này',
+                        ha='center', va='center', color='white')
         
         elif self.current_mode == "customer":
-            ax = self.figure.add_subplot(111)
-            ax.set_facecolor('#353535')
-            
-            customer_stats = self.statistics_controller.get_customer_statistics(month, year)
-            labels = ['Tổng khách hàng', 'Khách thân thiết', 'Khách mới']
-            values = [
-                customer_stats['total_customers'],
-                customer_stats['repeat_customers'], 
-                customer_stats['new_customers']
-            ]
-            
-            colors = ['#3498DB', '#2ECC71', '#E74C3C']
-            bars = ax.bar(labels, values, color=colors)
-            ax.set_ylabel('Số lượng', color='white')
-            ax.tick_params(axis='y', colors='white')
-            ax.tick_params(axis='x', colors='white')
-            ax.set_title('Thống kê khách hàng', color='white')
-            
-            for bar in bars:
-                height = bar.get_height()
-                ax.text(bar.get_x() + bar.get_width()/2., height,
-                       f'{int(height)}',
-                       ha='center', va='bottom', color='white')
+            if month == 'Tất cả':
+                trends = self.statistics_controller.get_monthly_customer_trends(year)
+                labels = [f'T{int(item[0])}' for item in trends]
+                new_data = [item[1] for item in trends]
+                repeat_data = [item[2] for item in trends]
+                x_label = 'Tháng'
+                title = f'Khách hàng mới & thân thiết năm {year}'
+                rotation = 0
+            else:
+                trends = self.statistics_controller.get_daily_customer_trends(month, year)
+                labels = [str(int(item[0])) for item in trends]
+                new_data = [item[1] for item in trends]
+                repeat_data = [item[2] for item in trends]
+                x_label = 'Ngày'
+                title = f'Khách hàng tháng {month}/{year}'
+                rotation = 45
+
+            if trends:
+                x = np.arange(len(labels))
+                ax = self.figure.add_subplot(111)
+                ax.set_facecolor('#353535')
+                ax.plot(x, new_data, marker='o', label='Khách hàng mới', color='#3498DB', linewidth=2)
+                ax.plot(x, repeat_data, marker='s', label='Khách hàng thân thiết', color='#E74C3C', linewidth=2)
+                ax.set_xticks(x)
+                ax.set_xticklabels(labels, color='white', rotation=rotation)
+                ax.set_ylabel('Số lượng khách hàng', color='white')
+                ax.set_xlabel(x_label, color='white')
+                ax.tick_params(axis='y', colors='white', labelcolor='white')
+                ax.grid(True, alpha=0.3, color='white')
+                ax.set_title(title, color='white', fontsize=12, fontweight='bold')
+                legend = ax.legend(frameon=True)
+                legend.get_frame().set_facecolor('#2C3E50')
+                legend.get_frame().set_edgecolor('white')
+                for text in legend.get_texts():
+                    text.set_color('white')
+            else:
+                ax = self.figure.add_subplot(111)
+                ax.set_facecolor('#353535')
+                ax.text(0.5, 0.5, 'Không có dữ liệu khách hàng trong khoảng thời gian này',
+                        ha='center', va='center', color='white')
         
         elif self.current_mode == "top_types":
             top_products = self.statistics_controller.get_top_products(month, year, 5)

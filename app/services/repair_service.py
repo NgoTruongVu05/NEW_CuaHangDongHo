@@ -11,17 +11,18 @@ class RepairService:
             cursor = self.db.conn.cursor()
             cursor.execute('''
                 INSERT INTO repair_orders 
-                (customer_id, employee_id, issue_description, actual_cost, 
+                (product_id, customer_id, employee_id, issue_description, actual_cost, 
                  created_date, estimated_completion, status)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            ''', (repair.customer_id, repair.employee_id, repair.issue_description,
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (repair.product_id, repair.customer_id, repair.employee_id, repair.issue_description,
                   repair.actual_cost, repair.created_date, repair.estimated_completion, 
                   repair.status))
             
             self.db.conn.commit()
             return True
         except Exception as e:
-            print(f"Error creating repair order: {e}")
+            from app.utils.error_handler import logger
+            logger.error(f"Error creating repair order: {e}")
             return False
     
     def update_repair_order(self, repair: RepairInvoice) -> bool:
@@ -42,7 +43,7 @@ class RepairService:
     def get_repair_by_id(self, repair_id: str) -> Optional[RepairInvoice]:
         cursor = self.db.conn.cursor()
         cursor.execute('''
-            SELECT r.id, r.customer_id, r.employee_id, r.issue_description,
+            SELECT r.id, r.product_id, r.customer_id, r.employee_id, r.issue_description,
                    r.actual_cost, r.created_date, r.estimated_completion, r.status,
                    c.name as customer_name, e.full_name as employee_name
             FROM repair_orders r
@@ -55,20 +56,21 @@ class RepairService:
         if data:
             return RepairInvoice(
                 id=str(data[0]),
-                customer_id=str(data[1]),
-                employee_id=data[2],
-                issue_description=data[3],
-                actual_cost=data[4],
-                created_date=data[5],
-                estimated_completion=data[6],
-                status=data[7]
+                product_id=str(data[1]) if data[1] else None,
+                customer_id=str(data[2]),
+                employee_id=data[3],
+                issue_description=data[4],
+                actual_cost=data[5],
+                created_date=data[6],
+                estimated_completion=data[7],
+                status=data[8]
             )
         return None
     
     def get_all_repairs(self) -> List[RepairInvoice]:
         cursor = self.db.conn.cursor()
         cursor.execute('''
-            SELECT r.id, r.customer_id, r.employee_id, r.issue_description,
+            SELECT r.id, r.product_id, r.customer_id, r.employee_id, r.issue_description,
                    r.actual_cost, r.created_date, r.estimated_completion, r.status,
                    c.name as customer_name, e.full_name as employee_name
             FROM repair_orders r
@@ -81,13 +83,14 @@ class RepairService:
         for data in cursor.fetchall():
             repair = RepairInvoice(
                 id=str(data[0]),
-                customer_id=str(data[1]),
-                employee_id=data[2],
-                issue_description=data[3],
-                actual_cost=data[4],
-                created_date=data[5],
-                estimated_completion=data[6],
-                status=data[7]
+                product_id=str(data[1]) if data[1] else None,
+                customer_id=str(data[2]),
+                employee_id=data[3],
+                issue_description=data[4],
+                actual_cost=data[5],
+                created_date=data[6],
+                estimated_completion=data[7],
+                status=data[8]
             )
             repairs.append(repair)
         return repairs

@@ -6,11 +6,12 @@ class RepairInvoice(Invoice):
                  employee_id: Optional[str] = None, total_amount: float = 0.0, 
                  created_date: Optional[str] = None, status: str = "",
                  issue_description: str = "", estimated_completion: Optional[str] = None,
-                 actual_cost: float = 0.0):
+                 actual_cost: float = 0.0, product_id: Optional[str] = None):
         super().__init__(id, customer_id, employee_id, total_amount, created_date, "repair", status)
         self.issue_description = issue_description
         self.estimated_completion = estimated_completion
         self.actual_cost = actual_cost
+        self.product_id = product_id
     
     def to_dict(self):
         data = super().to_dict()

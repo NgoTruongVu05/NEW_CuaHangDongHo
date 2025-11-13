@@ -9,7 +9,8 @@ class RepairController:
         self.customer_service = customer_service
     
     def create_repair_order(self, customer_phone: str, employee_id: str, 
-                           issue_description: str, estimated_completion: str) -> Tuple[bool, str]:
+                           issue_description: str, estimated_completion: str,
+                           product_id: Optional[str] = None) -> Tuple[bool, str]:
         if not issue_description.strip():
             return False, "Mô tả lỗi không được để trống"
         
@@ -24,7 +25,8 @@ class RepairController:
             issue_description=issue_description,
             estimated_completion=estimated_completion,
             status="Chờ xử lý",
-            actual_cost=0.0
+            actual_cost=0.0,
+            product_id=product_id
         )
         
         success = self.repair_service.create_repair_order(repair)

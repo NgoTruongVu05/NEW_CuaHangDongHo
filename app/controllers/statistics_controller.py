@@ -16,3 +16,15 @@ class StatisticsController:
     
     def get_monthly_revenue(self, year: int) -> List[Tuple]:
         return self.statistics_service.get_monthly_revenue(year)
+
+    def get_monthly_revenue_breakdown(self, year: int) -> List[Tuple[str, float, float]]:
+        return self.statistics_service.get_monthly_revenue_breakdown(year)
+
+    def get_daily_revenue_breakdown(self, month: str, year: int) -> List[Tuple[str, float, float]]:
+        return self.statistics_service.get_daily_revenue_breakdown(month, year)
+
+    def get_monthly_customer_trends(self, year: int) -> List[Tuple[str, int, int]]:
+        return self.statistics_service.get_monthly_customer_trends(year)
+
+    def get_daily_customer_trends(self, month: str, year: int) -> List[Tuple[str, int, int]]:
+        return self.statistics_service.get_daily_customer_trends(month, year)
