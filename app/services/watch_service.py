@@ -3,50 +3,61 @@ from app.models.watch import Watch
 from app.models.mechanical_watch import MechanicalWatch
 from app.models.electronic_watch import ElectronicWatch
 from app.utils.database import Database
+from app.utils.error_handler import handle_database_error, safe_execute
 
 class WatchService:
     def __init__(self, db: Database):
         self.db = db
     
     def get_all_watches(self) -> List[Union[MechanicalWatch, ElectronicWatch]]:
-        cursor = self.db.conn.cursor()
-        cursor.execute('''
-            SELECT p.*, b.name as brand_name 
-            FROM products p 
-            LEFT JOIN brands b ON p.brand_id = b.id 
-            ORDER BY p.id
-        ''')
-        products_data = cursor.fetchall()
-        
-        watches = []
-        for data in products_data:
-            if data[3] == "mechanical":  # product_type
-                watch = MechanicalWatch(
-                    id=str(data[0]),
-                    name=data[1],
-                    brand_id=str(data[2]),
-                    price=data[4],
-                    quantity=data[5],
-                    description=data[6],
-                    movement_type=data[7],
-                    power_reserve=data[8],
-                    water_resistant=bool(data[9])
-                )
-            else:
-                features = data[11].split(',') if data[11] else []
-                watch = ElectronicWatch(
-                    id=str(data[0]),
-                    name=data[1],
-                    brand_id=str(data[2]),
-                    price=data[4],
-                    quantity=data[5],
-                    description=data[6],
-                    battery_life=data[10],
-                    features=features,
-                    connectivity=data[12]
-                )
-            watches.append(watch)
-        return watches
+        try:
+            cursor = self.db.conn.cursor()
+            cursor.execute('''
+                SELECT p.*, b.name as brand_name 
+                FROM products p 
+                LEFT JOIN brands b ON p.brand_id = b.id 
+                ORDER BY p.id
+            ''')
+            products_data = cursor.fetchall()
+            
+            watches = []
+            for data in products_data:
+                try:
+                    if data[3] == "mechanical":  # product_type
+                        watch = MechanicalWatch(
+                            id=str(data[0]),
+                            name=data[1],
+                            brand_id=str(data[2]),
+                            price=data[4],
+                            quantity=data[5],
+                            description=data[6],
+                            movement_type=data[7],
+                            power_reserve=data[8],
+                            water_resistant=bool(data[9])
+                        )
+                    else:
+                        features = data[11].split(',') if data[11] else []
+                        watch = ElectronicWatch(
+                            id=str(data[0]),
+                            name=data[1],
+                            brand_id=str(data[2]),
+                            price=data[4],
+                            quantity=data[5],
+                            description=data[6],
+                            battery_life=data[10],
+                            features=features,
+                            connectivity=data[12]
+                        )
+                    watches.append(watch)
+                except (IndexError, ValueError, TypeError) as e:
+                    # Skip invalid records but continue processing
+                    from app.utils.error_handler import logger
+                    logger.warning(f"Skipping invalid product record: {e}")
+                    continue
+            return watches
+        except Exception as e:
+            handle_database_error(e, "lấy danh sách sản phẩm")
+            return []
     
     def get_watch_by_id(self, watch_id: str) -> Optional[Union[MechanicalWatch, ElectronicWatch]]:
         cursor = self.db.conn.cursor()
@@ -99,7 +110,7 @@ class WatchService:
                 ''', (watch.name, watch.brand_id, watch.product_type, watch.price, watch.quantity,
                       watch.description, watch.movement_type, watch.power_reserve, watch.water_resistant))
             else:
-                features_str = ','.join(watch.features)
+                features_str = ','.join(watch.features) if watch.features else ''
                 cursor.execute('''
                     INSERT INTO products (name, brand_id, product_type, price, quantity, description,
                     battery_life, features, connectivity)
@@ -110,7 +121,7 @@ class WatchService:
             self.db.conn.commit()
             return True
         except Exception as e:
-            print(f"Error creating watch: {e}")
+            handle_database_error(e, "tạo sản phẩm")
             return False
     
     def update_watch(self, watch: Union[MechanicalWatch, ElectronicWatch]) -> bool:
@@ -125,7 +136,7 @@ class WatchService:
                 ''', (watch.name, watch.brand_id, watch.product_type, watch.price, watch.quantity,
                       watch.description, watch.movement_type, watch.power_reserve, watch.water_resistant, watch.id))
             else:
-                features_str = ','.join(watch.features)
+                features_str = ','.join(watch.features) if watch.features else ''
                 cursor.execute('''
                     UPDATE products SET name=?, brand_id=?, product_type=?, price=?, quantity=?, description=?,
                     movement_type=NULL, power_reserve=NULL, water_resistant=NULL, battery_life=?, features=?, connectivity=?
@@ -136,7 +147,7 @@ class WatchService:
             self.db.conn.commit()
             return True
         except Exception as e:
-            print(f"Error updating watch: {e}")
+            handle_database_error(e, "cập nhật sản phẩm")
             return False
     
     def delete_watch(self, watch_id: str) -> bool:
@@ -146,17 +157,23 @@ class WatchService:
             self.db.conn.commit()
             return True
         except Exception as e:
-            print(f"Error deleting watch: {e}")
+            handle_database_error(e, "xóa sản phẩm")
             return False
     
     def update_watch_quantity(self, watch_id: str, new_quantity: int) -> bool:
         try:
+            if new_quantity < 0:
+                raise ValueError("Số lượng không thể âm")
             cursor = self.db.conn.cursor()
             cursor.execute('UPDATE products SET quantity = ? WHERE id = ?', (new_quantity, watch_id))
             self.db.conn.commit()
             return True
+        except ValueError as e:
+            from app.utils.error_handler import handle_validation_error
+            handle_validation_error(e, "số lượng")
+            return False
         except Exception as e:
-            print(f"Error updating watch quantity: {e}")
+            handle_database_error(e, "cập nhật số lượng sản phẩm")
             return False
     
     def get_available_watches(self) -> List[Union[MechanicalWatch, ElectronicWatch]]:

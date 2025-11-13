@@ -2,143 +2,168 @@ import sqlite3
 import hashlib
 import os
 from typing import Optional, List, Tuple
+from app.utils.error_handler import handle_database_error, logger
 
 class Database:
     def __init__(self, db_path: str = 'data/watch_management.db'):
-        # Create directory if it doesn't exist
-        os.makedirs(os.path.dirname(db_path), exist_ok=True)
-        
-        self.conn = sqlite3.connect(db_path)
-        self.create_tables()
+        try:
+            # Create directory if it doesn't exist
+            os.makedirs(os.path.dirname(db_path), exist_ok=True)
+            
+            self.conn = sqlite3.connect(db_path)
+            self.conn.execute('PRAGMA foreign_keys = ON')  # Enable foreign key constraints
+            self.create_tables()
+        except sqlite3.Error as e:
+            logger.error(f"Failed to initialize database: {e}")
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error initializing database: {e}")
+            raise
     
     def create_tables(self):
-        cursor = self.conn.cursor()
+        try:
+            cursor = self.conn.cursor()
 
-        # Bảng thương hiệu (brands)
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS brands (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT UNIQUE NOT NULL,
-                country TEXT
-            )
-        ''')
-        
-        # Bảng sản phẩm (liên kết brand_id)
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS products (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                brand_id INTEGER NOT NULL,
-                product_type TEXT NOT NULL,
-                price REAL NOT NULL,
-                quantity INTEGER NOT NULL CHECK(quantity >= 0),
-                description TEXT,
-                movement_type TEXT,
-                power_reserve INTEGER,
-                water_resistant BOOLEAN,
-                battery_life INTEGER,
-                features TEXT,
-                connectivity TEXT,
-                FOREIGN KEY (brand_id) REFERENCES brands (id)
-            )
-        ''')
+            # Bảng thương hiệu (brands)
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS brands (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT UNIQUE NOT NULL,
+                    country TEXT
+                )
+            ''')
+            
+            # Bảng sản phẩm (liên kết brand_id)
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS products (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL,
+                    brand_id INTEGER NOT NULL,
+                    product_type TEXT NOT NULL,
+                    price REAL NOT NULL,
+                    quantity INTEGER NOT NULL CHECK(quantity >= 0),
+                    description TEXT,
+                    movement_type TEXT,
+                    power_reserve INTEGER,
+                    water_resistant BOOLEAN,
+                    battery_life INTEGER,
+                    features TEXT,
+                    connectivity TEXT,
+                    FOREIGN KEY (brand_id) REFERENCES brands (id)
+                )
+            ''')
 
-        # Bảng nhân viên
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS employees (
-                id TEXT PRIMARY KEY,
-                ma_dinh_danh TEXT UNIQUE NOT NULL,
-                password TEXT NOT NULL,
-                full_name TEXT NOT NULL,
-                vaitro INTEGER NOT NULL DEFAULT 0,
-                phone TEXT,
-                email TEXT,
-                base_salary REAL DEFAULT 0
-            )
-        ''')
-        
-        # Bảng khách hàng
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS customers (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                phone TEXT,
-                email TEXT,
-                address TEXT
-            )
-        ''')
-        
-        # Bảng hóa đơn
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS invoices (
-                id TEXT PRIMARY KEY,
-                customer_id INTEGER,
-                employee_id TEXT,
-                total_amount REAL NOT NULL,
-                created_date TEXT NOT NULL,
-                status TEXT DEFAULT '',
-                FOREIGN KEY (customer_id) REFERENCES customers (id),
-                FOREIGN KEY (employee_id) REFERENCES employees (id)
-            )
-        ''')
-        
-        # Bảng chi tiết hóa đơn
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS invoice_details (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                invoice_id TEXT,
-                product_id INTEGER,
-                quantity INTEGER NOT NULL,
-                price REAL NOT NULL,
-                FOREIGN KEY (invoice_id) REFERENCES invoices (id),
-                FOREIGN KEY (product_id) REFERENCES products (id)
-            )
-        ''')
-        
-        # Bảng đơn sửa chữa
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS repair_orders (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                customer_id INTEGER,
-                employee_id TEXT,
-                issue_description TEXT NOT NULL,
-                actual_cost REAL DEFAULT 0,
-                created_date TEXT NOT NULL,
-                estimated_completion TEXT,
-                status TEXT DEFAULT 'pending',
-                FOREIGN KEY (customer_id) REFERENCES customers (id),
-                FOREIGN KEY (employee_id) REFERENCES employees (id)
-            )
-        ''')
-        
-        # Thêm admin mặc định - QL + 6 SỐ CUỐI
-        cursor.execute('''
-            INSERT OR IGNORE INTO employees 
-            (id, ma_dinh_danh, password, full_name, vaitro, base_salary)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', ('ql123456', '777777123456', self.hash_password('admin123'), 'Quản trị viên', 1, 15000000))
-        
-        # Thêm nhân viên mặc định - NV + 6 SỐ CUỐI
-        cursor.execute('''
-            INSERT OR IGNORE INTO employees 
-            (id, ma_dinh_danh, password, full_name, vaitro, base_salary)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', ('nv654321', '888888654321', self.hash_password('123456'), 'Nhân Viên Mẫu', 0, 8000000))
-        
-        self.conn.commit()
+            # Bảng nhân viên
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS employees (
+                    id TEXT PRIMARY KEY,
+                    ma_dinh_danh TEXT UNIQUE NOT NULL,
+                    password TEXT NOT NULL,
+                    full_name TEXT NOT NULL,
+                    vaitro INTEGER NOT NULL DEFAULT 0,
+                    phone TEXT,
+                    email TEXT,
+                    base_salary REAL DEFAULT 0
+                )
+            ''')
+            
+            # Bảng khách hàng
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS customers (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL,
+                    phone TEXT,
+                    email TEXT,
+                    address TEXT
+                )
+            ''')
+            
+            # Bảng hóa đơn
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS invoices (
+                    id TEXT PRIMARY KEY,
+                    customer_id INTEGER,
+                    employee_id TEXT,
+                    total_amount REAL NOT NULL,
+                    created_date TEXT NOT NULL,
+                    status TEXT DEFAULT '',
+                    FOREIGN KEY (customer_id) REFERENCES customers (id),
+                    FOREIGN KEY (employee_id) REFERENCES employees (id)
+                )
+            ''')
+            
+            # Bảng chi tiết hóa đơn
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS invoice_details (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    invoice_id TEXT,
+                    product_id INTEGER,
+                    quantity INTEGER NOT NULL,
+                    price REAL NOT NULL,
+                    FOREIGN KEY (invoice_id) REFERENCES invoices (id),
+                    FOREIGN KEY (product_id) REFERENCES products (id)
+                )
+            ''')
+            
+            # Bảng đơn sửa chữa
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS repair_orders (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    customer_id INTEGER,
+                    employee_id TEXT,
+                    issue_description TEXT NOT NULL,
+                    actual_cost REAL DEFAULT 0,
+                    created_date TEXT NOT NULL,
+                    estimated_completion TEXT,
+                    status TEXT DEFAULT 'pending',
+                    FOREIGN KEY (customer_id) REFERENCES customers (id),
+                    FOREIGN KEY (employee_id) REFERENCES employees (id)
+                )
+            ''')
+            
+            # Thêm admin mặc định - QL + 6 SỐ CUỐI
+            cursor.execute('''
+                INSERT OR IGNORE INTO employees 
+                (id, ma_dinh_danh, password, full_name, vaitro, base_salary)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', ('ql123456', '777777123456', self.hash_password('admin123'), 'Quản trị viên', 1, 15000000))
+            
+            # Thêm nhân viên mặc định - NV + 6 SỐ CUỐI
+            cursor.execute('''
+                INSERT OR IGNORE INTO employees 
+                (id, ma_dinh_danh, password, full_name, vaitro, base_salary)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', ('nv654321', '888888654321', self.hash_password('123456'), 'Nhân Viên Mẫu', 0, 8000000))
+            
+            self.conn.commit()
+        except sqlite3.Error as e:
+            logger.error(f"Error creating database tables: {e}")
+            self.conn.rollback()
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error creating database tables: {e}")
+            self.conn.rollback()
+            raise
     
     def hash_password(self, password: str) -> str:
         return hashlib.sha256(password.encode()).hexdigest()
     
     def verify_login(self, login_input: str, password: str) -> Optional[Tuple]:
-        cursor = self.conn.cursor()
-        hashed_password = self.hash_password(password)
-        
-        cursor.execute('SELECT * FROM employees WHERE id = ? AND password = ?', 
-                      (login_input, hashed_password))
-        user = cursor.fetchone()
-        
-        return user
+        try:
+            cursor = self.conn.cursor()
+            hashed_password = self.hash_password(password)
+            
+            cursor.execute('SELECT * FROM employees WHERE id = ? AND password = ?', 
+                          (login_input, hashed_password))
+            user = cursor.fetchone()
+            
+            return user
+        except sqlite3.Error as e:
+            logger.error(f"Error verifying login: {e}")
+            return None
+        except Exception as e:
+            logger.error(f"Unexpected error verifying login: {e}")
+            return None
     
     def generate_employee_id(self, ma_dinh_danh: str, role: int) -> str:
         """Tạo ID theo format: nv/ql + 6 số cuối mã định danh"""
@@ -157,16 +182,21 @@ class Database:
 
     def generate_invoice_id(self) -> str:
         """Tạo ID hóa đơn theo format HD001, HD002,..."""
-        cursor = self.conn.cursor()
-        cursor.execute('SELECT id FROM invoices WHERE id LIKE "HD%" ORDER BY id DESC LIMIT 1')
-        result = cursor.fetchone()
-        
-        if result is None:
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute('SELECT id FROM invoices WHERE id LIKE "HD%" ORDER BY id DESC LIMIT 1')
+            result = cursor.fetchone()
+            
+            if result is None:
+                return 'HD001'
+            
+            last_id = result[0]
+            num = int(last_id[2:]) + 1  # Lấy phần số và tăng 1
+            return f'HD{num:03d}'
+        except (sqlite3.Error, ValueError, IndexError) as e:
+            logger.error(f"Error generating invoice ID: {e}")
+            # Return a default ID if error occurs
             return 'HD001'
-        
-        last_id = result[0]
-        num = int(last_id[2:]) + 1  # Lấy phần số và tăng 1
-        return f'HD{num:03d}'
 
     def close(self):
         """Đóng kết nối database"""

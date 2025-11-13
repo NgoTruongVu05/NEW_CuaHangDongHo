@@ -237,7 +237,15 @@ class BrandManagementTab(QWidget):
             QMessageBox.information(self, 'Thành công', success_msg)
             self.load_data()
 
+        except FileNotFoundError:
+            QMessageBox.critical(self, 'Lỗi', 'Không tìm thấy file CSV. Vui lòng kiểm tra đường dẫn file.')
+        except PermissionError:
+            QMessageBox.critical(self, 'Lỗi', 'Không có quyền truy cập file CSV. Vui lòng kiểm tra quyền truy cập.')
+        except UnicodeDecodeError:
+            QMessageBox.critical(self, 'Lỗi', 'Lỗi đọc file CSV: File không đúng định dạng hoặc mã hóa. Vui lòng kiểm tra file.')
         except Exception as e:
+            from app.utils.error_handler import logger
+            logger.error(f"Error importing CSV: {e}")
             QMessageBox.critical(self, 'Lỗi', f'Không thể đọc file CSV: {str(e)}')
 
 class BrandDialog(QDialog):
