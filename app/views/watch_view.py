@@ -39,6 +39,52 @@ class ProductManagementTab(QWidget):
         except:
             return 0.0
 
+    def _parse_int_field(self, value, default=0):
+        if value is None or value == "":
+            return default
+        try:
+            if isinstance(value, str):
+                value = value.strip()
+            return int(float(value))
+        except (TypeError, ValueError):
+            return default
+
+    def _parse_bool_field(self, value):
+        if isinstance(value, bool):
+            return value
+        if value is None:
+            return False
+        if isinstance(value, (int, float)):
+            return bool(value)
+        text = str(value).strip().lower()
+        if text in {"1", "true", "yes", "y"}:
+            return True
+        if text in {"0", "false", "no", "n"}:
+            return False
+        return False
+
+    def _parse_features_field(self, value):
+        if not value:
+            return []
+        if isinstance(value, list):
+            return [str(item).strip() for item in value if str(item).strip()]
+
+        import re
+
+        text = str(value).strip()
+        if text.startswith("[") and text.endswith("]"):
+            try:
+                import json
+
+                parsed = json.loads(text)
+                if isinstance(parsed, list):
+                    return [str(item).strip() for item in parsed if str(item).strip()]
+            except json.JSONDecodeError:
+                pass
+
+        parts = [item.strip() for item in re.split(r"[;,]", text) if item.strip()]
+        return parts
+
     def _format_input(self, line_edit):
         text = line_edit.text()
         if text:
@@ -142,7 +188,7 @@ class ProductManagementTab(QWidget):
 
         # Table
         self.table = QTableWidget()
-        self.table.setSelectionMode(QTableWidget.SelectionMode.NoSelection)
+        self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.table.setColumnCount(8)
         self.table.setHorizontalHeaderLabels(['ID', 'Tên', 'Thương hiệu', 'Loại', 'Giá', 'Số lượng', 'Chi tiết sản phẩm', 'Hành động'])
 
@@ -461,8 +507,8 @@ class ProductManagementTab(QWidget):
         self.load_data()
 
     def show_product_details(self, product_id):
-        from .dialogs.product_dialog import ProductDialog
-        dialog = ProductDialog(self.db, self.watch_controller, product_id)
+        from .dialogs.product_detail_dialog import ProductDetailDialog
+        dialog = ProductDetailDialog(self.db, self.watch_controller, self.brand_controller, product_id)
         dialog.exec()
 
     def add_product(self):
@@ -554,12 +600,34 @@ class ProductManagementTab(QWidget):
                             continue
 
                     if product_type.lower() in ['mechanical', 'cơ']:
+                        movement_type = (row.get('movement_type') or '').strip().lower()
+                        power_reserve = self._parse_int_field(row.get('power_reserve'))
+                        water_resistant = self._parse_bool_field(row.get('water_resistant'))
+
                         success, message = self.watch_controller.create_mechanical_watch(
-                            name, brand_name, price, quantity
+                            name,
+                            brand_name,
+                            price,
+                            quantity,
+                            row.get('description', '').strip(),
+                            movement_type,
+                            power_reserve,
+                            water_resistant
                         )
                     else:
+                        battery_life = self._parse_int_field(row.get('battery_life'))
+                        features = self._parse_features_field(row.get('features'))
+                        connectivity = (row.get('connectivity') or '').strip()
+
                         success, message = self.watch_controller.create_electronic_watch(
-                            name, brand_name, price, quantity
+                            name,
+                            brand_name,
+                            price,
+                            quantity,
+                            row.get('description', '').strip(),
+                            battery_life,
+                            features,
+                            connectivity
                         )
 
                     if success:
