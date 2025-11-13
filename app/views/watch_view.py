@@ -406,6 +406,8 @@ class ProductManagementTab(QWidget):
                     action_layout.addWidget(delete_btn)
 
                 action_layout.addStretch()
+                for r in range(self.table.rowCount()):
+                    self.table.setRowHeight(r, 40)
                 self.table.setCellWidget(row, 7, action_widget)
 
             # Update brand filter

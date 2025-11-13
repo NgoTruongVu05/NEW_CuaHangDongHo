@@ -125,18 +125,6 @@ class Database:
             VALUES (?, ?, ?, ?, ?, ?)
         ''', ('nv654321', '888888654321', self.hash_password('123456'), 'Nhân Viên Mẫu', 0, 8000000))
         
-        # Thêm một số thương hiệu mẫu
-        sample_brands = [
-            ('Rolex', 'Thụy Sĩ'),
-            ('Omega', 'Thụy Sĩ'),
-            ('Casio', 'Nhật Bản'),
-            ('Seiko', 'Nhật Bản'),
-            ('Tissot', 'Thụy Sĩ'),
-            ('Citizen', 'Nhật Bản')
-        ]
-        
-        cursor.executemany('INSERT OR IGNORE INTO brands (name, country) VALUES (?, ?)', sample_brands)
-        
         self.conn.commit()
     
     def hash_password(self, password: str) -> str:
