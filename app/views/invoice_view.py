@@ -259,6 +259,11 @@ class InvoiceManagementTab(QWidget):
             self.repair_btn.setStyleSheet(active_style)
     
     def load_data(self):
+        # Clear all cell widgets to prevent overlapping
+        for row in range(self.table.rowCount()):
+            for col in range(self.table.columnCount()):
+                self.table.setCellWidget(row, col, None)
+        self.table.setRowCount(0)
         self.table.clearContents()
         if self.current_mode == "invoices":
             self.load_invoices_data()

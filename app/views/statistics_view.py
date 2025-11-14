@@ -78,7 +78,9 @@ class StatisticsTab(QWidget):
         self.total_revenue_label = QLabel('Tổng doanh thu bán hàng: 0 VND')
         self.total_revenue_label.setStyleSheet("color: white;")
         self.total_sales_label = QLabel('Tổng số hóa đơn bán hàng: 0')
+        self.total_sales_label.setStyleSheet("color: white;")
         self.avg_sale_label = QLabel('Giá trị trung bình mỗi hóa đơn: 0 VND')
+        self.avg_sale_label.setStyleSheet("color: white;")
         for w in (self.total_revenue_label, self.total_sales_label, self.avg_sale_label):
             sl.addWidget(w)
         self.sales_group.setLayout(sl)
@@ -90,7 +92,9 @@ class StatisticsTab(QWidget):
         self.total_repair_revenue_label = QLabel('Tổng doanh thu sửa chữa: 0 VND')
         self.total_repair_revenue_label.setStyleSheet("color: white;")
         self.total_repairs_label = QLabel('Tổng số đơn sửa chữa: 0')
+        self.total_repairs_label.setStyleSheet("color: white;")
         self.completed_repairs_label = QLabel('Đơn đã hoàn thành: 0')
+        self.completed_repairs_label.setStyleSheet("color: white;")
         for w in (self.total_repair_revenue_label, self.total_repairs_label, self.completed_repairs_label):
             rl.addWidget(w)
         self.repair_group.setLayout(rl)
@@ -100,8 +104,11 @@ class StatisticsTab(QWidget):
         self.customer_group = QGroupBox('Thống kê khách hàng')
         cl = QVBoxLayout()
         self.total_customers_label = QLabel('Tổng số khách hàng: 0')
+        self.total_customers_label.setStyleSheet("color: white;")
         self.repeat_customers_label = QLabel('Khách hàng thân thiết: 0')
+        self.repeat_customers_label.setStyleSheet("color: white;")
         self.new_customers_month_label = QLabel('Khách hàng mới (tháng): 0')
+        self.new_customers_month_label.setStyleSheet("color: white;")
         cl.addWidget(self.total_customers_label)
         cl.addWidget(self.repeat_customers_label)
         cl.addWidget(self.new_customers_month_label)
@@ -117,13 +124,16 @@ class StatisticsTab(QWidget):
         # Chart area
         self.chart_group = QGroupBox('Biểu đồ thống kê')
         chart_layout = QVBoxLayout()
-        self.figure = Figure(figsize=(9,4), dpi=100)
+        self.figure = Figure(dpi=100)
         self.canvas = FigureCanvas(self.figure)
         chart_layout.addWidget(self.canvas)
         self.chart_group.setLayout(chart_layout)
 
         layout.addWidget(self.chart_group)
         self.setLayout(layout)
+
+        # Connect resize event for responsive chart
+        self.resizeEvent = self.on_resize
 
         # Styles
         self.active_style = '''
@@ -200,7 +210,7 @@ class StatisticsTab(QWidget):
     def update_chart(self):
         month = self.month_filter.currentText()
         year = self.year_filter.value()
-        
+
         self.figure.clear()
         self.figure.patch.set_facecolor('#353535')
         
@@ -291,23 +301,27 @@ class StatisticsTab(QWidget):
         
         elif self.current_mode == "top_types":
             top_products = self.statistics_controller.get_top_products(month, year, 5)
+            if month == 'Tất cả':
+                title = f'Top sản phẩm bán chạy năm {year}'
+            else:
+                title = f'Top sản phẩm bán chạy tháng {month}/{year}'
             if top_products:
                 products = [p[0] for p in top_products]
                 quantities = [p[1] for p in top_products]
-                
+
                 ax = self.figure.add_subplot(111)
                 ax.set_facecolor('#353535')
                 y_pos = np.arange(len(products))
                 colors = ['#3498DB', '#2ECC71', '#E74C3C', '#F39C12', '#9B59B6']
-                
+
                 bars = ax.barh(y_pos, quantities, color=colors[:len(products)])
                 ax.set_yticks(y_pos)
                 ax.set_yticklabels(products, color='white')
                 ax.invert_yaxis()
                 ax.set_xlabel('Số lượng bán', color='white')
                 ax.tick_params(axis='x', colors='white')
-                ax.set_title('Top sản phẩm bán chạy', color='white')
-                
+                ax.set_title(title, color='white', fontsize=12, fontweight='bold')
+
                 for bar in bars:
                     width = bar.get_width()
                     ax.text(width, bar.get_y() + bar.get_height()/2.,
@@ -316,11 +330,17 @@ class StatisticsTab(QWidget):
             else:
                 ax = self.figure.add_subplot(111)
                 ax.set_facecolor('#353535')
-                ax.text(0.5, 0.5, 'Không có dữ liệu sản phẩm bán chạy', 
+                ax.text(0.5, 0.5, 'Không có dữ liệu sản phẩm bán chạy',
                        ha='center', va='center', color='white')
         
-        try:
-            self.figure.tight_layout()
-        except:
-            pass
+        # Set fixed subplot position to prevent height changes
+        ax.set_position([0.1, 0.1, 0.85, 0.8])
         self.canvas.draw()
+
+    def on_resize(self, event):
+        # Update figure size based on current canvas size
+        width = self.canvas.width() / self.figure.dpi
+        height = self.canvas.height() / self.figure.dpi
+        self.figure.set_size_inches(width, height)
+        self.update_chart()
+        super().resizeEvent(event)

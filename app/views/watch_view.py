@@ -1,10 +1,9 @@
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
                              QTableWidget, QTableWidgetItem, QMessageBox,
                              QHeaderView, QLabel, QLineEdit, QComboBox,
-                             QGraphicsDropShadowEffect, QScrollArea, QFormLayout,
-                             QFileDialog, QProgressDialog)
+                             QGraphicsDropShadowEffect, QFileDialog, QProgressDialog)
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QColor, QFont, QIntValidator, QDoubleValidator
+from PyQt6.QtGui import QColor, QIntValidator, QDoubleValidator
 import csv
 from app.controllers.watch_controller import WatchController
 from app.controllers.brand_controller import BrandController
@@ -656,7 +655,85 @@ class ProductManagementTab(QWidget):
             else:
                 QMessageBox.warning(self, 'Lỗi', message)
 
+    def _validate_csv_headers(self, reader):
+        """Validate CSV headers and return validation result."""
+        required_headers = ['name', 'brand', 'product_type', 'price', 'quantity']
+        if not all(header in reader.fieldnames for header in required_headers):
+            QMessageBox.warning(self, 'Lỗi', f'File CSV thiếu các cột bắt buộc: {", ".join(required_headers)}')
+            return False
+        return True
+
+    def _check_if_brand_file(self, reader):
+        """Check if the CSV file is actually a brand file."""
+        product_required = ['brand', 'product_type', 'price', 'quantity']
+        has_product_required = all(header in reader.fieldnames for header in product_required)
+
+        if 'name' in reader.fieldnames and 'country' in reader.fieldnames and not has_product_required:
+            if 'brand' not in reader.fieldnames and 'product_type' not in reader.fieldnames:
+                QMessageBox.warning(
+                    self,
+                    'Lỗi định dạng file',
+                    'File CSV này là file thương hiệu, không phải file sản phẩm.\n'
+                    'Vui lòng sử dụng chức năng "Nhập CSV" trong phần Quản lý thương hiệu.'
+                )
+                return True
+        return False
+
+    def _process_csv_row(self, row, brand_cache):
+        """Process a single CSV row and return the result."""
+        try:
+            name = row.get('name', '').strip()
+            brand_name = row.get('brand', '').strip()
+            product_type = row.get('product_type', '').strip()
+            price = self._parse_price_string(row.get('price', 0))
+            quantity = int(float(row.get('quantity', 0))) if row.get('quantity') else 0
+
+            if not name or not brand_name or price <= 0 or quantity < 0:
+                return False, "Dữ liệu không hợp lệ"
+
+            # Check brand with caching
+            if brand_name not in brand_cache:
+                brand_cache[brand_name] = self.brand_controller.get_brand_by_name(brand_name)
+
+            brand = brand_cache[brand_name]
+            if not brand:
+                return False, "Thương hiệu không tồn tại"
+
+            # Create watch based on type
+            if product_type.lower() in ['mechanical', 'cơ']:
+                return self._create_mechanical_watch_from_row(row, name, brand_name, price, quantity)
+            else:
+                return self._create_electronic_watch_from_row(row, name, brand_name, price, quantity)
+
+        except Exception as e:
+            return False, f"Lỗi xử lý: {str(e)}"
+
+    def _create_mechanical_watch_from_row(self, row, name, brand_name, price, quantity):
+        """Create mechanical watch from CSV row data."""
+        movement_type = (row.get('movement_type') or '').strip().lower()
+        power_reserve = self._parse_int_field(row.get('power_reserve'))
+        water_resistant = self._parse_bool_field(row.get('water_resistant'))
+
+        success, message = self.watch_controller.create_mechanical_watch(
+            name, brand_name, price, quantity, row.get('description', '').strip(),
+            movement_type, power_reserve, water_resistant
+        )
+        return success, message
+
+    def _create_electronic_watch_from_row(self, row, name, brand_name, price, quantity):
+        """Create electronic watch from CSV row data."""
+        battery_life = self._parse_int_field(row.get('battery_life'))
+        features = self._parse_features_field(row.get('features'))
+        connectivity = (row.get('connectivity') or '').strip()
+
+        success, message = self.watch_controller.create_electronic_watch(
+            name, brand_name, price, quantity, row.get('description', '').strip(),
+            battery_life, features, connectivity
+        )
+        return success, message
+
     def import_csv(self):
+        """Import products from CSV file with improved error handling and performance."""
         file_path, _ = QFileDialog.getOpenFileName(
             self, "Chọn file CSV", "", "CSV files (*.csv);;All files (*)"
         )
@@ -672,105 +749,42 @@ class ProductManagementTab(QWidget):
                 QMessageBox.warning(self, 'Lỗi', 'File CSV trống hoặc không có dữ liệu.')
                 return
 
-            # Kiểm tra xem đây có phải là file thương hiệu không
-            product_required = ['brand', 'product_type', 'price', 'quantity']
-            has_product_required = all(header in reader.fieldnames for header in product_required)
-            
-            # Nếu có 'name' và 'country' nhưng không có các cột sản phẩm bắt buộc
-            if 'name' in reader.fieldnames and 'country' in reader.fieldnames and not has_product_required:
-                # Kiểm tra xem có phải là file thương hiệu không (chỉ có name và country, không có brand, product_type)
-                if 'brand' not in reader.fieldnames and 'product_type' not in reader.fieldnames:
-                    QMessageBox.warning(
-                        self, 
-                        'Lỗi định dạng file', 
-                        'File CSV này là file thương hiệu, không phải file sản phẩm.\n'
-                        'Vui lòng sử dụng chức năng "Nhập CSV" trong phần Quản lý thương hiệu.'
-                    )
-                    return
-
-            # Validate headers
-            required_headers = ['name', 'brand', 'product_type', 'price', 'quantity']
-            if not all(header in reader.fieldnames for header in required_headers):
-                QMessageBox.warning(self, 'Lỗi', f'File CSV thiếu các cột bắt buộc: {", ".join(required_headers)}')
+            # Validate file type and headers
+            if self._check_if_brand_file(reader):
                 return
 
+            if not self._validate_csv_headers(reader):
+                return
+
+            # Setup progress dialog
             progress = QProgressDialog("Đang nhập dữ liệu...", "Hủy", 0, len(rows), self)
             progress.setWindowModality(Qt.WindowModality.WindowModal)
             progress.show()
 
             imported_count = 0
-            updated_count = 0
             skipped_count = 0
+            brand_cache = {}  # Cache for brand lookups
 
+            # Process each row
             for i, row in enumerate(rows):
                 if progress.wasCanceled():
                     break
 
                 progress.setValue(i + 1)
 
-                try:
-                    name = row.get('name', '').strip()
-                    brand_name = row.get('brand', '').strip()
-                    product_type = row.get('product_type', '').strip()
-                    price = self._parse_price_string(row.get('price', 0))
-                    quantity = int(float(row.get('quantity', 0))) if row.get('quantity') else 0
-
-                    if not name or not brand_name or price <= 0 or quantity < 0:
-                        skipped_count += 1
-                        continue
-
-                    # Kiểm tra brand - không cho phép tạo brand mới
-                    brand = self.brand_controller.get_brand_by_name(brand_name)
-                    if not brand:
-                        skipped_count += 1
-                        continue
-
-                    if product_type.lower() in ['mechanical', 'cơ']:
-                        movement_type = (row.get('movement_type') or '').strip().lower()
-                        power_reserve = self._parse_int_field(row.get('power_reserve'))
-                        water_resistant = self._parse_bool_field(row.get('water_resistant'))
-
-                        success, message = self.watch_controller.create_mechanical_watch(
-                            name,
-                            brand_name,
-                            price,
-                            quantity,
-                            row.get('description', '').strip(),
-                            movement_type,
-                            power_reserve,
-                            water_resistant
-                        )
-                    else:
-                        battery_life = self._parse_int_field(row.get('battery_life'))
-                        features = self._parse_features_field(row.get('features'))
-                        connectivity = (row.get('connectivity') or '').strip()
-
-                        success, message = self.watch_controller.create_electronic_watch(
-                            name,
-                            brand_name,
-                            price,
-                            quantity,
-                            row.get('description', '').strip(),
-                            battery_life,
-                            features,
-                            connectivity
-                        )
-
-                    if success:
-                        imported_count += 1
-                    else:
-                        skipped_count += 1
-
-                except Exception as e:
+                success, message = self._process_csv_row(row, brand_cache)
+                if success:
+                    imported_count += 1
+                else:
                     skipped_count += 1
-                    continue
 
             progress.setValue(len(rows))
 
+            # Show results
             success_msg = f'Đã nhập thành công {imported_count} sản phẩm mới.'
             if skipped_count > 0:
                 success_msg += f'\nĐã bỏ qua {skipped_count} sản phẩm do lỗi.'
-            
+
             QMessageBox.information(self, 'Thành công', success_msg)
             self.load_data()
 

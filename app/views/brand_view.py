@@ -175,11 +175,11 @@ class BrandManagementTab(QWidget):
             # Kiểm tra xem đây có phải là file sản phẩm không
             product_indicators = ['brand', 'product_type', 'price', 'quantity']
             has_product_indicators = any(indicator in reader.fieldnames for indicator in product_indicators)
-            
+
             if has_product_indicators:
                 QMessageBox.warning(
-                    self, 
-                    'Lỗi định dạng file', 
+                    self,
+                    'Lỗi định dạng file',
                     'File CSV này là file sản phẩm, không phải file thương hiệu.\n'
                     'Vui lòng sử dụng chức năng "Nhập CSV" trong phần Quản lý sản phẩm.'
                 )
@@ -198,6 +198,9 @@ class BrandManagementTab(QWidget):
             imported_count = 0
             skipped_count = 0
 
+            # Cache existing brand names to avoid repeated database calls
+            existing_brands = {brand.name for brand in self.brand_controller.get_all_brands()}
+
             for i, row in enumerate(rows):
                 if progress.wasCanceled():
                     break
@@ -212,15 +215,15 @@ class BrandManagementTab(QWidget):
                         skipped_count += 1
                         continue
 
-                    # Kiểm tra brand đã tồn tại chưa
-                    existing_brand = self.brand_controller.get_brand_by_name(name)
-                    if existing_brand:
+                    # Kiểm tra brand đã tồn tại chưa - sử dụng cache
+                    if name in existing_brands:
                         skipped_count += 1
                         continue
 
                     success, message = self.brand_controller.create_brand(name, country)
                     if success:
                         imported_count += 1
+                        existing_brands.add(name)  # Add to cache
                     else:
                         skipped_count += 1
 
@@ -233,7 +236,7 @@ class BrandManagementTab(QWidget):
             success_msg = f'Đã nhập thành công {imported_count} thương hiệu.'
             if skipped_count > 0:
                 success_msg += f'\nĐã bỏ qua {skipped_count} thương hiệu (đã tồn tại hoặc lỗi).'
-            
+
             QMessageBox.information(self, 'Thành công', success_msg)
             self.load_data()
 
