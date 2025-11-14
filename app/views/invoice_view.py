@@ -1,7 +1,7 @@
-from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QTableWidget, 
+from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QTableWidget,
                              QTableWidgetItem, QPushButton, QMessageBox,
                              QHeaderView, QHBoxLayout, QLabel, QDialog,
-                             QLineEdit, QDateEdit, QComboBox, QTextEdit, QGridLayout, QGroupBox)
+                             QLineEdit, QDateEdit, QComboBox, QTextEdit, QGridLayout, QGroupBox, QSizePolicy)
 from PyQt6.QtCore import Qt, QDate
 from datetime import datetime
 from app.controllers.invoice_controller import InvoiceController
@@ -160,6 +160,7 @@ class InvoiceManagementTab(QWidget):
         
         # Main table
         self.table = QTableWidget()
+        self.table.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         layout.addWidget(self.table)
         
         self.setLayout(layout)
@@ -371,7 +372,7 @@ class InvoiceManagementTab(QWidget):
                     background-color: #229954;
                 }
             ''')
-            view_btn.clicked.connect(lambda checked, rid=repair.id: self.view_repair_details(rid))
+            view_btn.clicked.connect(lambda checked, rid=rid: self.view_repair_details(rid))
 
             if self.user_role == 1:
                 edit_btn = QPushButton('Sửa')
@@ -390,8 +391,7 @@ class InvoiceManagementTab(QWidget):
                         background-color: #2980B9;
                     }
                 ''')
-                edit_btn.clicked.connect(lambda checked, rid=repair.id: self.edit_repair(rid))
-                action_layout.addWidget(edit_btn)
+                edit_btn.clicked.connect(lambda checked, rid=rid: self.edit_repair(rid))
 
             action_layout.addStretch()
             action_layout.addWidget(view_btn)
@@ -408,7 +408,7 @@ class InvoiceManagementTab(QWidget):
         self.table.setHorizontalHeaderLabels([
             'ID', 'Khách hàng', 'Nhân viên', 'Tổng tiền', 'Ngày tạo', 'Chi tiết'
         ])
-        
+
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
@@ -416,6 +416,7 @@ class InvoiceManagementTab(QWidget):
         header.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)
+        self.table.setColumnWidth(5, 120)
     
     def setup_repairs_table(self):
         self.table.setColumnCount(9)
@@ -432,8 +433,8 @@ class InvoiceManagementTab(QWidget):
         header.setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(6, QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(7, QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(8, QHeaderView.ResizeMode.Fixed)
-        self.table.setColumnWidth(8, 180)
+        header.setSectionResizeMode(8, QHeaderView.ResizeMode.ResizeToContents)
+        self.table.setColumnWidth(8, 200)
 
     def show_invoice_details(self, invoice_id):
         invoice_data = self.invoice_controller.get_invoice_by_id(invoice_id)
