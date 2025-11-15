@@ -22,7 +22,7 @@ class CustomerDialog(QDialog):
         form_layout.addRow('Tên khách hàng:', self.name_input)
         
         self.phone_input = QLineEdit()
-        form_layout.addRow('Điện thoại:*', self.phone_input)
+        form_layout.addRow('Điện thoại:', self.phone_input)
         
         self.email_input = QLineEdit()
         form_layout.addRow('Email:', self.email_input)

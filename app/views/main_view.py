@@ -91,6 +91,7 @@ class MainWindow(QMainWindow):
         if self.user_role == 1:
             self.product_tab = ProductManagementTab(self.db, self.controllers, self.user_role)
             self.brand_tab = BrandManagementTab(self.db, self.controllers, self.user_role)
+            # Truyền user_id và user_role cho employee tab
             self.employee_tab = EmployeeManagementTab(self.db, self.controllers, self.user_role, self.user_info[0])
             self.salary_tab = SalaryManagementTab(self.db, self.controllers, self.user_role)
             
