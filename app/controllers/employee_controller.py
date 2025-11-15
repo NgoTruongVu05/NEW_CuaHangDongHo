@@ -28,18 +28,33 @@ class EmployeeController:
         if not name.strip():
             return False, "Họ tên không được để trống"
         
-        if phone and not Validators.is_valid_phone(phone):
+        # Bắt buộc số điện thoại
+        if not phone.strip():
+            return False, "Số điện thoại không được để trống"
+        
+        # Bắt buộc email
+        if not email.strip():
+            return False, "Email không được để trống"
+        
+        if not Validators.is_valid_phone(phone):
             return False, "Số điện thoại không hợp lệ"
         
-        if email and not Validators.is_valid_email(email):
+        if not Validators.is_valid_email(email):
             return False, "Email không hợp lệ"
         
         if self.employee_service.is_ma_dinh_danh_exists(ma_dinh_danh):
             return False, "Mã định danh đã tồn tại"
         
-        # Generate employee ID
-        six_digits = ma_dinh_danh[-6:]
-        employee_id = f"{'ql' if role == 1 else 'nv'}{six_digits}"
+        # Kiểm tra số điện thoại trùng
+        if self.employee_service.is_phone_exists(phone):
+            return False, "Số điện thoại đã tồn tại"
+        
+        # Kiểm tra email trùng
+        if self.employee_service.is_email_exists(email):
+            return False, "Email đã tồn tại"
+        
+        # Generate employee ID - CHỈ DÙNG 6 SỐ CUỐI
+        employee_id = ma_dinh_danh[-6:]
         
         if self.employee_service.is_id_exists(employee_id):
             return False, "ID nhân viên đã tồn tại"
@@ -63,20 +78,40 @@ class EmployeeController:
             return False, "Lỗi khi thêm nhân viên"
     
     def update_employee(self, employee_id: str, name: str, role: int, 
-                       base_salary: float, phone: str = "", email: str = "", 
-                       password: str = "") -> Tuple[bool, str]:
+                   base_salary: float, phone: str = "", email: str = "", 
+                   password: str = "") -> Tuple[bool, str]:
         if not name.strip():
             return False, "Họ tên không được để trống"
         
-        if phone and not Validators.is_valid_phone(phone):
+        # Bắt buộc số điện thoại
+        if not phone.strip():
+            return False, "Số điện thoại không được để trống"
+        
+        # Bắt buộc email
+        if not email.strip():
+            return False, "Email không được để trống"
+        
+        if not Validators.is_valid_phone(phone):
             return False, "Số điện thoại không hợp lệ"
         
-        if email and not Validators.is_valid_email(email):
+        if not Validators.is_valid_email(email):
             return False, "Email không hợp lệ"
+        
+        # Kiểm tra số điện thoại trùng (trừ chính nhân viên đang sửa)
+        if self.employee_service.is_phone_exists(phone, employee_id):
+            return False, "Số điện thoại đã tồn tại"
+        
+        # Kiểm tra email trùng (trừ chính nhân viên đang sửa)
+        if self.employee_service.is_email_exists(email, employee_id):
+            return False, "Email đã tồn tại"
         
         employee = self.get_employee_by_id(employee_id)
         if not employee:
             return False, "Không tìm thấy nhân viên"
+        
+        # KHÔNG cho phép thay đổi vai trò của quản lý khác
+        if employee.role == 1 and role == 0:
+            return False, "Không thể thay đổi vai trò của quản lý"
         
         # Update fields
         employee.name = name
@@ -94,10 +129,14 @@ class EmployeeController:
         else:
             return False, "Lỗi khi cập nhật nhân viên"
     
-    def delete_employee(self, employee_id: str) -> Tuple[bool, str]:
+    def delete_employee(self, employee_id: str, current_user_id: str = None) -> Tuple[bool, str]:
         employee = self.get_employee_by_id(employee_id)
         if not employee:
             return False, "Không tìm thấy nhân viên"
+        
+        # Không cho phép xóa chính mình
+        if employee_id == current_user_id:
+            return False, "Không thể xóa tài khoản của chính mình"
         
         if employee.role == 1:
             return False, "Không thể xóa tài khoản quản lý"
@@ -119,13 +158,19 @@ class EmployeeController:
             return [e for e in all_employees 
                    if search_text in e.id.lower() or 
                    search_text in e.ma_dinh_danh.lower() or 
-                   search_text in e.name.lower()]
+                   search_text in e.name.lower() or
+                   search_text in (e.phone or '').lower() or
+                   search_text in (e.email or '').lower()]
         elif search_type == 'ID':
             return [e for e in all_employees if search_text in e.id.lower()]
         elif search_type == 'Mã ĐD':
             return [e for e in all_employees if search_text in e.ma_dinh_danh.lower()]
         elif search_type == 'Họ tên':
             return [e for e in all_employees if search_text in e.name.lower()]
+        elif search_type == 'Số điện thoại':
+            return [e for e in all_employees if search_text in (e.phone or '').lower()]
+        elif search_type == 'Email':
+            return [e for e in all_employees if search_text in (e.email or '').lower()]
         elif search_type == 'Vai trò':
             role_text = "quản lý" if search_text in ['quản lý', '1'] else "nhân viên"
             return [e for e in all_employees if e.get_role_text().lower() == role_text]

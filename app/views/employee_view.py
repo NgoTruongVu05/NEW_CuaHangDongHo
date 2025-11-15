@@ -113,6 +113,10 @@ class EmployeeManagementTab(QWidget):
                 self.search_input.setPlaceholderText('Nhập mã định danh...')
             elif search_type == 'Họ tên':
                 self.search_input.setPlaceholderText('Nhập họ tên nhân viên...')
+            elif search_type == 'Số điện thoại':
+                self.search_input.setPlaceholderText('Nhập số điện thoại...')
+            elif search_type == 'Email':
+                self.search_input.setPlaceholderText('Nhập email...')
             
             self.search_employees()
     
@@ -154,26 +158,33 @@ class EmployeeManagementTab(QWidget):
             action_layout = QHBoxLayout(action_widget)
             action_layout.setContentsMargins(5, 2, 5, 2)
 
-            edit_btn = QPushButton('Sửa')
-            edit_btn.setStyleSheet('''
-                QPushButton {
-                    background-color: #3498DB;
-                    color: white;
-                    border: none;
-                    border-radius: 3px;
-                    padding: 3px 8px;
-                    font-size: 11px;
-                    margin-right: 2px;
-                }
-                QPushButton:hover {
-                    background-color: #2980B9;
-                }
-            ''')
-            edit_btn.clicked.connect(lambda checked, eid=employee.id: self.edit_employee(eid))
-            action_layout.addWidget(edit_btn)
+            # Xác định có được phép sửa không
+            can_edit = True
+            # Không được sửa quản lý khác (trừ khi là chính mình)
+            if employee.role == 1 and employee.id != self.user_id:
+                can_edit = False
+            
+            if can_edit:
+                edit_btn = QPushButton('Sửa')
+                edit_btn.setStyleSheet('''
+                    QPushButton {
+                        background-color: #3498DB;
+                        color: white;
+                        border: none;
+                        border-radius: 3px;
+                        padding: 3px 8px;
+                        font-size: 11px;
+                        margin-right: 2px;
+                    }
+                    QPushButton:hover {
+                        background-color: #2980B9;
+                    }
+                ''')
+                edit_btn.clicked.connect(lambda checked, eid=employee.id: self.edit_employee(eid))
+                action_layout.addWidget(edit_btn)
 
-            # Chỉ cho phép xóa nhân viên (không phải quản lý)
-            if employee.role == 0:  # Nhân viên
+            # Chỉ cho phép xóa nhân viên (không phải quản lý) và chỉ khi có quyền sửa
+            if employee.role == 0 and can_edit:  # Nhân viên và có quyền sửa
                 delete_btn = QPushButton('Xóa')
                 delete_btn.setStyleSheet('''
                     QPushButton {
@@ -191,6 +202,12 @@ class EmployeeManagementTab(QWidget):
                 ''')
                 delete_btn.clicked.connect(lambda checked, eid=employee.id: self.delete_employee(eid))
                 action_layout.addWidget(delete_btn)
+            
+            # Nếu không có quyền sửa, hiển thị thông báo
+            if not can_edit:
+                no_permission_label = QLabel('Không thể chỉnh sửa')
+                no_permission_label.setStyleSheet('color: #95A5A6; font-style: italic;')
+                action_layout.addWidget(no_permission_label)
             
             action_layout.addStretch()
             self.table.setCellWidget(row, 7, action_widget)

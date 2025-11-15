@@ -13,10 +13,10 @@ class EmployeeDialog(QDialog):
         self.init_ui()
         if employee_id:
             self.load_employee_data()
-    
+
     def init_ui(self):
         self.setWindowTitle('Thêm/Sửa nhân viên' if not self.employee_id else 'Sửa nhân viên')
-        self.setFixedSize(450, 400)
+        self.setFixedSize(450, 450)
         
         form_layout = QFormLayout()
         
@@ -29,7 +29,7 @@ class EmployeeDialog(QDialog):
             
             self.id_label = QLabel('Chưa có ID')
             self.id_label.setStyleSheet('color: #2E86AB; font-weight: bold; background-color: #f0f0f0; padding: 5px; border: 1px solid #ccc;')
-            form_layout.addRow('ID:', self.id_label)
+            form_layout.addRow('ID (6 số cuối):', self.id_label)
         else:
             employee = self.employee_controller.get_employee_by_id(self.employee_id)
             if employee:
@@ -41,6 +41,7 @@ class EmployeeDialog(QDialog):
         self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
         if not self.employee_id:
             self.password_input.setPlaceholderText('Bắt buộc khi thêm mới')
+            form_layout.addRow('Mật khẩu:', self.password_input)
         else:
             self.password_input.setPlaceholderText('Để trống nếu không đổi mật khẩu')
             
@@ -49,21 +50,34 @@ class EmployeeDialog(QDialog):
             if employee and employee.role == 1 and employee.id != self.user_id:
                 self.password_input.setPlaceholderText('Không thể sửa mật khẩu của Quản lý khác')
                 self.password_input.setDisabled(True)
-        
-        form_layout.addRow('Mật khẩu:', self.password_input)
+            form_layout.addRow('Mật khẩu:', self.password_input)
         
         self.full_name_input = QLineEdit()
         form_layout.addRow('Họ tên:', self.full_name_input)
         
-        self.role_combo = QComboBox()
-        self.role_combo.addItems(['Nhân viên', 'Quản lý'])
-        self.role_combo.currentTextChanged.connect(self.on_role_changed)
+        # Xác định có được phép sửa vai trò không
+        self.can_edit_role = True
+        if self.employee_id:
+            employee = self.employee_controller.get_employee_by_id(self.employee_id)
+            if employee:
+                # Không được sửa vai trò của chính mình hoặc quản lý khác
+                if employee.id == self.user_id or (employee.role == 1 and employee.id != self.user_id):
+                    self.can_edit_role = False
         
-        # Không cho thay đổi vai trò của chính mình
-        if self.employee_id and self.employee_id == self.user_id:
-            self.role_combo.setEnabled(False)
-            
-        form_layout.addRow('Vai trò:', self.role_combo)
+        # Vai trò - chỉ hiển thị khi được phép sửa
+        if self.can_edit_role:
+            self.role_combo = QComboBox()
+            self.role_combo.addItems(['Nhân viên', 'Quản lý'])
+            self.role_combo.currentTextChanged.connect(self.on_role_changed)
+            form_layout.addRow('Vai trò:', self.role_combo)
+        else:
+            # Hiển thị vai trò dạng label (chỉ đọc)
+            employee = self.employee_controller.get_employee_by_id(self.employee_id)
+            if employee:
+                role_text = "Quản lý" if employee.role == 1 else "Nhân viên"
+                role_label = QLabel(role_text)
+                role_label.setStyleSheet('color: #666; background-color: #f0f0f0; padding: 5px; border: 1px solid #ccc;')
+                form_layout.addRow('Vai trò:', role_label)
         
         self.base_salary_input = QDoubleSpinBox()
         self.base_salary_input.setMaximum(999999999)
@@ -71,10 +85,14 @@ class EmployeeDialog(QDialog):
         self.base_salary_input.setValue(8000000)
         form_layout.addRow('Lương cơ bản:', self.base_salary_input)
         
+        # Số điện thoại (bắt buộc)
         self.phone_input = QLineEdit()
+        self.phone_input.setPlaceholderText('Nhập số điện thoại')
         form_layout.addRow('Điện thoại:', self.phone_input)
         
+        # Email (bắt buộc)
         self.email_input = QLineEdit()
+        self.email_input.setPlaceholderText('Nhập địa chỉ email')
         form_layout.addRow('Email:', self.email_input)
         
         self.save_btn = QPushButton('Lưu')
@@ -94,8 +112,8 @@ class EmployeeDialog(QDialog):
     
     def on_ma_dinh_danh_changed(self, text):
         if len(text) == 12 and text.isdigit():
-            role = 1 if self.role_combo.currentText() == 'Quản lý' else 0
-            employee_id = f"{'ql' if role == 1 else 'nv'}{text[-6:]}"
+            # CHỈ DÙNG 6 SỐ CUỐI làm ID
+            employee_id = text[-6:]
             
             # Kiểm tra ID đã tồn tại chưa
             existing = self.employee_controller.get_employee_by_id(employee_id)
@@ -110,47 +128,66 @@ class EmployeeDialog(QDialog):
             self.id_label.setStyleSheet('color: #2E86AB; font-weight: bold; background-color: #f0f0f0; padding: 5px; border: 1px solid #ccc;')
     
     def on_role_changed(self, role_text):
-        if not self.employee_id and hasattr(self, 'ma_dinh_danh_input'):
-            ma_dinh_danh = self.ma_dinh_danh_input.text()
-            if len(ma_dinh_danh) == 12 and ma_dinh_danh.isdigit():
-                role = 1 if role_text == 'Quản lý' else 0
-                employee_id = f"{'ql' if role == 1 else 'nv'}{ma_dinh_danh[-6:]}"
-                
-                existing = self.employee_controller.get_employee_by_id(employee_id)
-                if existing:
-                    self.id_label.setText('ĐÃ CÓ - ' + employee_id)
-                    self.id_label.setStyleSheet('color: #FF0000; font-weight: bold; background-color: #ffe6e6; padding: 5px; border: 1px solid #ff0000;')
-                else:
-                    self.id_label.setText(employee_id)
-                    self.id_label.setStyleSheet('color: #2E86AB; font-weight: bold; background-color: #f0f0f0; padding: 5px; border: 1px solid #ccc;')
+        # Không cần thay đổi ID khi đổi role vì ID chỉ là 6 số cuối
+        pass
     
     def load_employee_data(self):
         employee = self.employee_controller.get_employee_by_id(self.employee_id)
         if employee:
             self.full_name_input.setText(employee.name)
-            self.role_combo.setCurrentText('Quản lý' if employee.role == 1 else 'Nhân viên')
+            
+            # Chỉ set giá trị cho combobox nếu nó tồn tại (có quyền sửa)
+            if hasattr(self, 'role_combo'):
+                self.role_combo.setCurrentText('Quản lý' if employee.role == 1 else 'Nhân viên')
+            
             self.base_salary_input.setValue(employee.base_salary)
             self.phone_input.setText(employee.phone or '')
             self.email_input.setText(employee.email or '')
     
     def save_employee(self):
+        # Lấy dữ liệu từ form
         password = self.password_input.text()
         full_name = self.full_name_input.text().strip()
-        role = 1 if self.role_combo.currentText() == 'Quản lý' else 0
+        
+        # Xác định role
+        if hasattr(self, 'role_combo'):
+            role = 1 if self.role_combo.currentText() == 'Quản lý' else 0
+        else:
+            # Nếu không có combobox (không được sửa role), lấy role từ database
+            employee = self.employee_controller.get_employee_by_id(self.employee_id)
+            role = employee.role if employee else 0
+        
         base_salary = self.base_salary_input.value()
         phone = self.phone_input.text().strip()
         email = self.email_input.text().strip()
         
-        if not self.employee_id:
-            # Thêm mới
+        # Kiểm tra các trường bắt buộc
+        if not self.employee_id and not password:
+            QMessageBox.warning(self, 'Lỗi', 'Vui lòng nhập mật khẩu!')
+            return
+        
+        if not full_name:
+            QMessageBox.warning(self, 'Lỗi', 'Vui lòng nhập họ tên!')
+            return
+        
+        if not phone:
+            QMessageBox.warning(self, 'Lỗi', 'Vui lòng nhập số điện thoại!')
+            return
+        
+        if not email:
+            QMessageBox.warning(self, 'Lỗi', 'Vui lòng nhập email!')
+            return
+        
+        if self.employee_id:
+            # Sửa nhân viên
+            success, message = self.employee_controller.update_employee(
+                self.employee_id, full_name, role, base_salary, phone, email, password
+            )
+        else:
+            # Thêm mới nhân viên
             ma_dinh_danh = self.ma_dinh_danh_input.text().strip()
             success, message = self.employee_controller.create_employee(
                 ma_dinh_danh, password, full_name, role, base_salary, phone, email
-            )
-        else:
-            # Sửa
-            success, message = self.employee_controller.update_employee(
-                self.employee_id, full_name, role, base_salary, phone, email, password
             )
         
         if success:

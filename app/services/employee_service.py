@@ -99,6 +99,24 @@ class EmployeeService:
         cursor.execute('SELECT id FROM employees WHERE id = ?', (employee_id,))
         return cursor.fetchone() is not None
     
+    def is_phone_exists(self, phone: str, exclude_employee_id: Optional[str] = None) -> bool:
+        cursor = self.db.conn.cursor()
+        if exclude_employee_id:
+            cursor.execute('SELECT id FROM employees WHERE phone = ? AND id != ?', 
+                         (phone, exclude_employee_id))
+        else:
+            cursor.execute('SELECT id FROM employees WHERE phone = ?', (phone,))
+        return cursor.fetchone() is not None
+    
+    def is_email_exists(self, email: str, exclude_employee_id: Optional[str] = None) -> bool:
+        cursor = self.db.conn.cursor()
+        if exclude_employee_id:
+            cursor.execute('SELECT id FROM employees WHERE email = ? AND id != ?', 
+                         (email, exclude_employee_id))
+        else:
+            cursor.execute('SELECT id FROM employees WHERE email = ?', (email,))
+        return cursor.fetchone() is not None
+    
     def verify_login(self, user_id: str, password: str) -> Optional[Employee]:
         cursor = self.db.conn.cursor()
         hashed_password = self.db.hash_password(password)
