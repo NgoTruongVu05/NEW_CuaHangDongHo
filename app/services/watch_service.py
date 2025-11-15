@@ -153,6 +153,19 @@ class WatchService:
     def delete_watch(self, watch_id: str) -> bool:
         try:
             cursor = self.db.conn.cursor()
+
+            # Kiểm tra xem sản phẩm có đang được sử dụng trong hóa đơn không
+            cursor.execute('SELECT COUNT(*) FROM invoice_details WHERE product_id = ?', (watch_id,))
+            invoice_count = cursor.fetchone()[0]
+
+            # Kiểm tra xem sản phẩm có đang được sử dụng trong đơn sửa chữa không
+            cursor.execute('SELECT COUNT(*) FROM repair_orders WHERE product_id = ?', (watch_id,))
+            repair_count = cursor.fetchone()[0]
+
+            # Nếu sản phẩm đang được sử dụng, không cho phép xóa
+            if invoice_count > 0 or repair_count > 0:
+                return False
+
             cursor.execute('DELETE FROM products WHERE id = ?', (watch_id,))
             self.db.conn.commit()
             return True
