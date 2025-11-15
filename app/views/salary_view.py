@@ -42,11 +42,12 @@ class SalaryManagementTab(QWidget):
         
         # Table
         self.table = QTableWidget()
+        self.table.setSelectionMode(QTableWidget.SelectionMode.NoSelection)
         self.table.setColumnCount(7)
         self.table.setHorizontalHeaderLabels([
             'ID NV', 'Họ tên', 'Vai trò', 'Lương cơ bản', 'Doanh số', 'Hoa hồng 0.5%', 'Tổng lương'
         ])
-        
+
         # Set column widths
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
@@ -56,7 +57,7 @@ class SalaryManagementTab(QWidget):
         header.setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(6, QHeaderView.ResizeMode.ResizeToContents)
-        
+
         layout.addWidget(self.table)
         
         self.setLayout(layout)

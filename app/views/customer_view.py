@@ -67,9 +67,9 @@ class CustomerManagementTab(QWidget):
         
         # Table
         self.table = QTableWidget()
+        self.table.setSelectionMode(QTableWidget.SelectionMode.NoSelection)
         self.table.setColumnCount(6)
         self.table.setHorizontalHeaderLabels(['ID', 'Tên', 'Điện thoại', 'Email', 'Địa chỉ', 'Hành động'])
-        self.table.setSelectionMode(QTableWidget.SelectionMode.NoSelection)
         
         # Set column widths
         header = self.table.horizontalHeader()

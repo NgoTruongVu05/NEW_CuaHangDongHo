@@ -75,12 +75,11 @@ class EmployeeManagementTab(QWidget):
         
         # Table
         self.table = QTableWidget()
+        self.table.setSelectionMode(QTableWidget.SelectionMode.NoSelection)
         self.table.setColumnCount(8)
         self.table.setHorizontalHeaderLabels([
             'ID', 'Mã ĐD', 'Họ tên', 'Vai trò', 'Lương cơ bản', 'Điện thoại', 'Email', 'Hành động'
         ])
-        
-        self.table.setSelectionMode(QTableWidget.SelectionMode.NoSelection)
         
         # Set column widths
         header = self.table.horizontalHeader()

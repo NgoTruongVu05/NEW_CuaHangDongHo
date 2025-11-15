@@ -160,6 +160,7 @@ class InvoiceManagementTab(QWidget):
         
         # Main table
         self.table = QTableWidget()
+        self.table.setSelectionMode(QTableWidget.SelectionMode.NoSelection)
         self.table.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         layout.addWidget(self.table)
         
@@ -475,6 +476,7 @@ class InvoiceManagementTab(QWidget):
         
         # Products table
         table = QTableWidget()
+        table.setSelectionMode(QTableWidget.SelectionMode.NoSelection)
         table.setColumnCount(4)
         table.setHorizontalHeaderLabels(['Sản phẩm', 'Số lượng', 'Đơn giá', 'Thành tiền'])
         

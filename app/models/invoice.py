@@ -26,13 +26,15 @@ class Invoice:
         }
 
 class InvoiceDetail:
-    def __init__(self, id: Optional[str] = None, invoice_id: Optional[str] = None, 
-                 product_id: Optional[str] = None, quantity: int = 0, price: float = 0.0):
+    def __init__(self, id: Optional[str] = None, invoice_id: Optional[str] = None,
+                 product_id: Optional[str] = None, quantity: int = 0, price: float = 0.0,
+                 product_name: Optional[str] = None):
         self.id = id
         self.invoice_id = invoice_id
         self.product_id = product_id
         self.quantity = quantity
         self.price = price
+        self.product_name = product_name
     
     def to_dict(self):
         return {

@@ -25,7 +25,7 @@ class InvoiceService:
             JOIN products p ON id.product_id = p.id
             WHERE id.invoice_id = ?
         ''', (invoice_id,))
-        
+
         details = []
         for data in cursor.fetchall():
             detail = InvoiceDetail(
@@ -33,7 +33,8 @@ class InvoiceService:
                 invoice_id=data[1],
                 product_id=str(data[2]),
                 quantity=data[3],
-                price=data[4]
+                price=data[4],
+                product_name=data[5]
             )
             details.append(detail)
         return details
