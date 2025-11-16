@@ -136,3 +136,10 @@ class EmployeeService:
                 base_salary=data[7]
             )
         return None
+    
+    def is_employee_has_invoices(self, employee_id: str) -> bool:
+        """Kiểm tra xem nhân viên có tồn tại trong hóa đơn không"""
+        cursor = self.db.conn.cursor()
+        cursor.execute('SELECT COUNT(*) FROM invoices WHERE employee_id = ?', (employee_id,))
+        count = cursor.fetchone()[0]
+        return count > 0

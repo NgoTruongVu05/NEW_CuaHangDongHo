@@ -237,6 +237,7 @@ class ProductManagementTab(QWidget):
         # Table
         self.table = QTableWidget()
         self.table.setSelectionMode(QTableWidget.SelectionMode.NoSelection)
+        self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.table.setColumnCount(8)
         self.table.setHorizontalHeaderLabels(['ID', 'Tên', 'Thương hiệu', 'Loại', 'Giá', 'Số lượng', 'Chi tiết sản phẩm', 'Hành động'])
 

@@ -141,6 +141,10 @@ class EmployeeController:
         if employee.role == 1:
             return False, "Không thể xóa tài khoản quản lý"
         
+        # Kiểm tra xem nhân viên có tồn tại trong hóa đơn không
+        if self.employee_service.is_employee_has_invoices(employee_id):
+            return False, "Không thể xóa nhân viên đã có giao dịch"
+        
         success = self.employee_service.delete_employee(employee_id)
         if success:
             return True, "Xóa nhân viên thành công"

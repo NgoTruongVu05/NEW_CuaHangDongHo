@@ -61,7 +61,9 @@ class BrandManagementTab(QWidget):
         
         # Table
         self.table = QTableWidget()
+        # Chặn selection và editing trực tiếp
         self.table.setSelectionMode(QTableWidget.SelectionMode.NoSelection)
+        self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.table.setColumnCount(4)
         self.table.setHorizontalHeaderLabels(['ID', 'Tên thương hiệu', 'Quốc gia', 'Hành động'])
         

@@ -108,3 +108,10 @@ class CustomerService:
         else:
             cursor.execute('SELECT id FROM customers WHERE email = ?', (email,))
         return cursor.fetchone() is not None
+    
+    def is_customer_has_invoices(self, customer_id: str) -> bool:
+        """Kiểm tra xem khách hàng có tồn tại trong hóa đơn không"""
+        cursor = self.db.conn.cursor()
+        cursor.execute('SELECT COUNT(*) FROM invoices WHERE customer_id = ?', (customer_id,))
+        count = cursor.fetchone()[0]
+        return count > 0

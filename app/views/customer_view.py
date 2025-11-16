@@ -67,7 +67,9 @@ class CustomerManagementTab(QWidget):
         
         # Table
         self.table = QTableWidget()
+        # Chặn selection và editing trực tiếp
         self.table.setSelectionMode(QTableWidget.SelectionMode.NoSelection)
+        self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.table.setColumnCount(6)
         self.table.setHorizontalHeaderLabels(['ID', 'Tên', 'Điện thoại', 'Email', 'Địa chỉ', 'Hành động'])
         

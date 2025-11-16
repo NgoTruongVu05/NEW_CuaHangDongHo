@@ -75,7 +75,9 @@ class EmployeeManagementTab(QWidget):
         
         # Table
         self.table = QTableWidget()
+        # Chặn selection và editing trực tiếp
         self.table.setSelectionMode(QTableWidget.SelectionMode.NoSelection)
+        self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.table.setColumnCount(8)
         self.table.setHorizontalHeaderLabels([
             'ID', 'Mã ĐD', 'Họ tên', 'Vai trò', 'Lương cơ bản', 'Điện thoại', 'Email', 'Hành động'
@@ -236,7 +238,7 @@ class EmployeeManagementTab(QWidget):
         reply = QMessageBox.question(self, 'Xác nhận', 
                                    f'Bạn có chắc muốn xóa nhân viên "{employee.name}"?')
         if reply == QMessageBox.StandardButton.Yes:
-            success, message = self.employee_controller.delete_employee(employee_id)
+            success, message = self.employee_controller.delete_employee(employee_id, self.user_id)
             if success:
                 self.load_data()
                 QMessageBox.information(self, 'Thành công', message)

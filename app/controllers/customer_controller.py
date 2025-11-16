@@ -72,6 +72,10 @@ class CustomerController:
             return False, "Lỗi khi cập nhật khách hàng"
     
     def delete_customer(self, customer_id: str) -> Tuple[bool, str]:
+        # Kiểm tra xem khách hàng có tồn tại trong hóa đơn không
+        if self.customer_service.is_customer_has_invoices(customer_id):
+            return False, "Không thể xóa khách hàng đã có giao dịch"
+        
         success = self.customer_service.delete_customer(customer_id)
         if success:
             return True, "Xóa khách hàng thành công"

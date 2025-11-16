@@ -43,6 +43,7 @@ class SalaryManagementTab(QWidget):
         # Table
         self.table = QTableWidget()
         self.table.setSelectionMode(QTableWidget.SelectionMode.NoSelection)
+        self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.table.setColumnCount(7)
         self.table.setHorizontalHeaderLabels([
             'ID NV', 'Họ tên', 'Vai trò', 'Lương cơ bản', 'Doanh số', 'Hoa hồng 0.5%', 'Tổng lương'
