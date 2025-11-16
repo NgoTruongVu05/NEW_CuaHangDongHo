@@ -73,7 +73,7 @@ class Database:
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     name TEXT NOT NULL,
                     phone TEXT UNIQUE NOT NULL,
-                    email TEXT UNIQUE NOT NULL,
+                    email TEXT,
                     address TEXT
                 )
             ''')
