@@ -48,6 +48,7 @@ class CreateInvoiceTab(QWidget):
         product_layout.addLayout(search_layout)
 
         self.product_table = QTableWidget()
+        self.product_table.setSelectionMode(QTableWidget.SelectionMode.NoSelection)
         self.product_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.product_table.setColumnCount(6)
         self.product_table.setHorizontalHeaderLabels(['Chọn', 'Tên', 'Giá', 'Tồn kho', 'Số lượng', 'ID'])
@@ -106,6 +107,7 @@ class CreateInvoiceTab(QWidget):
         customer_layout.addWidget(self.customer_search)
 
         self.customer_table = QTableWidget()
+        self.customer_table.setSelectionMode(QTableWidget.SelectionMode.NoSelection)
         self.customer_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.customer_table.setColumnCount(4)
         self.customer_table.setHorizontalHeaderLabels(['Chọn', 'Tên', 'Số điện thoại', 'Địa chỉ'])
@@ -145,6 +147,7 @@ class CreateInvoiceTab(QWidget):
         right_layout.addWidget(self.customer_label)
 
         self.cart_table = QTableWidget()
+        self.cart_table.setSelectionMode(QTableWidget.SelectionMode.NoSelection)
         self.cart_table.setColumnCount(5)
         self.cart_table.setHorizontalHeaderLabels(['Sản phẩm', 'Đơn giá', 'Số lượng', 'Thành tiền', 'Hành động'])
 

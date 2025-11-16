@@ -50,6 +50,7 @@ class CreateRepairTab(QWidget):
 
         # Product table
         self.product_table = QTableWidget()
+        self.product_table.setSelectionMode(QTableWidget.SelectionMode.NoSelection)
         self.product_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.product_table.setColumnCount(5)
         self.product_table.setHorizontalHeaderLabels(['Chọn', 'Tên đồng hồ', 'Giá', 'Tồn kho', 'ID'])
@@ -94,6 +95,7 @@ class CreateRepairTab(QWidget):
         customer_layout.addWidget(self.customer_search)
 
         self.customer_table = QTableWidget()
+        self.customer_table.setSelectionMode(QTableWidget.SelectionMode.NoSelection)
         self.customer_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.customer_table.setColumnCount(4)
         self.customer_table.setHorizontalHeaderLabels(['Chọn', 'Tên', 'Số điện thoại', 'Địa chỉ'])
