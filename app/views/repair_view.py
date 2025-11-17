@@ -227,7 +227,7 @@ class CreateRepairTab(QWidget):
         for row, product in enumerate(page_items):
             checkbox = QCheckBox()
             checkbox.setStyleSheet("margin-left:10px;")
-            checkbox.stateChanged.connect(lambda state, r=row: self.select_single_product(r + start))
+            checkbox.stateChanged.connect(lambda state, p=product, r=row: self.select_single_product(p, r))
             self.product_table.setCellWidget(row, 0, checkbox)
 
             self.product_table.setItem(row, 1, QTableWidgetItem(product.name))
@@ -240,21 +240,19 @@ class CreateRepairTab(QWidget):
         self.prev_product_btn.setEnabled(self.current_product_page > 1)
         self.next_product_btn.setEnabled(self.current_product_page < total_pages)
 
-    def select_single_product(self, selected_row):
+    def select_single_product(self, product, row):
         """Chỉ cho phép chọn 1 đồng hồ duy nhất"""
-        for row in range(self.product_table.rowCount()):
-            checkbox = self.product_table.cellWidget(row, 0)
-            if row != selected_row:
+        for r in range(self.product_table.rowCount()):
+            checkbox = self.product_table.cellWidget(r, 0)
+            if checkbox and r != row:
                 checkbox.blockSignals(True)
                 checkbox.setChecked(False)
                 checkbox.blockSignals(False)
 
-        checkbox = self.product_table.cellWidget(selected_row, 0)
-        if checkbox.isChecked():
-            name = self.product_table.item(selected_row, 1).text()
-            pid = int(self.product_table.item(selected_row, 4).text())
-            self.selected_product = {'id': pid, 'name': name}
-            self.product_label.setText(f"Đồng hồ: {name}")
+        checkbox = self.product_table.cellWidget(row, 0)
+        if checkbox and checkbox.isChecked():
+            self.selected_product = {'id': product.id, 'name': product.name}
+            self.product_label.setText(f"Đồng hồ: {product.name}")
         else:
             self.selected_product = None
             self.product_label.setText("Đồng hồ: (chưa chọn)")
@@ -292,7 +290,7 @@ class CreateRepairTab(QWidget):
         self.customer_table.setRowCount(len(page_items))
         for row, customer in enumerate(page_items):
             checkbox = QCheckBox()
-            checkbox.stateChanged.connect(lambda state, r=row: self.select_single_customer(r + start))
+            checkbox.stateChanged.connect(lambda state, c=customer, r=row: self.select_single_customer(c, r))
             self.customer_table.setCellWidget(row, 0, checkbox)
             self.customer_table.setItem(row, 1, QTableWidgetItem(customer.name))
             self.customer_table.setItem(row, 2, QTableWidgetItem(customer.phone or ''))
@@ -304,21 +302,19 @@ class CreateRepairTab(QWidget):
         self.prev_cust_btn.setEnabled(self.current_customer_page > 1)
         self.next_cust_btn.setEnabled(self.current_customer_page < total_pages)
 
-    def select_single_customer(self, selected_row):
+    def select_single_customer(self, customer, row):
         """Đảm bảo chỉ chọn 1 khách hàng duy nhất"""
-        for row in range(self.customer_table.rowCount()):
-            checkbox = self.customer_table.cellWidget(row, 0)
-            if row != selected_row:
+        for r in range(self.customer_table.rowCount()):
+            checkbox = self.customer_table.cellWidget(r, 0)
+            if checkbox and r != row:
                 checkbox.blockSignals(True)
                 checkbox.setChecked(False)
                 checkbox.blockSignals(False)
 
-        checkbox = self.customer_table.cellWidget(selected_row, 0)
-        if checkbox.isChecked():
-            name = self.customer_table.item(selected_row, 1).text()
-            phone = self.customer_table.item(selected_row, 2).text()
-            self.selected_customer = {'name': name, 'phone': phone}
-            self.customer_label.setText(f"Khách hàng: {name}")
+        checkbox = self.customer_table.cellWidget(row, 0)
+        if checkbox and checkbox.isChecked():
+            self.selected_customer = {'name': customer.name, 'phone': customer.phone}
+            self.customer_label.setText(f"Khách hàng: {customer.name}")
         else:
             self.selected_customer = None
             self.customer_label.setText("Khách hàng: (chưa chọn)")

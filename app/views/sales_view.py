@@ -285,7 +285,7 @@ class CreateInvoiceTab(QWidget):
         
         for row, customer in enumerate(page_items):
             checkbox = QCheckBox()
-            checkbox.stateChanged.connect(lambda state, r=row: self.select_single_customer(r + start))
+            checkbox.stateChanged.connect(lambda state, c=customer, r=row: self.select_single_customer(c, r))
             self.customer_table.setCellWidget(row, 0, checkbox)
             self.customer_table.setItem(row, 1, QTableWidgetItem(customer.name))
             self.customer_table.setItem(row, 2, QTableWidgetItem(customer.phone or ''))
@@ -308,21 +308,19 @@ class CreateInvoiceTab(QWidget):
             self.customer_current_page -= 1
             self.display_customer_page(self.customer_current_page)
 
-    def select_single_customer(self, selected_row):
+    def select_single_customer(self, customer, row):
         """Đảm bảo chỉ chọn 1 khách hàng duy nhất"""
-        for row in range(self.customer_table.rowCount()):
-            checkbox = self.customer_table.cellWidget(row, 0)
-            if row != selected_row:
+        for r in range(self.customer_table.rowCount()):
+            checkbox = self.customer_table.cellWidget(r, 0)
+            if checkbox and r != row:
                 checkbox.blockSignals(True)
                 checkbox.setChecked(False)
                 checkbox.blockSignals(False)
 
-        checkbox = self.customer_table.cellWidget(selected_row, 0)
-        if checkbox.isChecked():
-            name = self.customer_table.item(selected_row, 1).text()
-            phone = self.customer_table.item(selected_row, 2).text()
-            self.selected_customer = {'name': name, 'phone': phone}
-            self.customer_label.setText(f"Khách hàng: {name}")
+        checkbox = self.customer_table.cellWidget(row, 0)
+        if checkbox and checkbox.isChecked():
+            self.selected_customer = {'name': customer.name, 'phone': customer.phone}
+            self.customer_label.setText(f"Khách hàng: {customer.name}")
         else:
             self.selected_customer = None
             self.customer_label.setText("Khách hàng: (chưa chọn)")

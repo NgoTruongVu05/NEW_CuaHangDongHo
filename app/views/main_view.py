@@ -83,9 +83,8 @@ class MainWindow(QMainWindow):
         self.invoice_tab = InvoiceManagementTab(self.db, self.controllers, self.user_role)
         self.statistics_tab = StatisticsTab(self.db, self.controllers, self.user_role)
         
-        self.tabs.addTab(self.customer_tab, "Quản lý khách hàng")
         self.tabs.addTab(self.invoice_tab, "Quản lý hóa đơn")
-        self.tabs.addTab(self.statistics_tab, "Thống kê")
+        self.tabs.addTab(self.customer_tab, "Quản lý khách hàng")
         
         # Chỉ thêm tab quản lý cho admin
         if self.user_role == 1:
@@ -95,10 +94,13 @@ class MainWindow(QMainWindow):
             self.employee_tab = EmployeeManagementTab(self.db, self.controllers, self.user_role, self.user_info[0])
             self.salary_tab = SalaryManagementTab(self.db, self.controllers, self.user_role)
             
-            self.tabs.addTab(self.product_tab, "Quản lý sản phẩm")
-            self.tabs.addTab(self.brand_tab, "Quản lý thương hiệu")
             self.tabs.addTab(self.employee_tab, "Quản lý nhân viên")
+            self.tabs.addTab(self.brand_tab, "Quản lý thương hiệu")
+            self.tabs.addTab(self.product_tab, "Quản lý sản phẩm")
             self.tabs.addTab(self.salary_tab, "Quản lý lương")
+        
+        
+        self.tabs.addTab(self.statistics_tab, "Thống kê")
     
     def on_tab_changed(self, index):
         """Handle tab changed event - reload data when tab is selected"""
