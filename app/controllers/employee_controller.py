@@ -16,10 +16,10 @@ class EmployeeController:
     def verify_login(self, user_id: str, password: str) -> Optional[Employee]:
         return self.employee_service.verify_login(user_id, password)
     
-    def create_employee(self, ma_dinh_danh: str, password: str, name: str, 
+    def create_employee(self, identification: str, password: str, name: str, 
                        role: int, base_salary: float, phone: str = "", email: str = "") -> Tuple[bool, str]:
         # Validate input
-        if not ma_dinh_danh.strip() or len(ma_dinh_danh) != 12 or not ma_dinh_danh.isdigit():
+        if not identification.strip() or len(identification) != 12 or not identification.isdigit():
             return False, "Mã định danh phải có đúng 12 chữ số"
         
         if not password.strip():
@@ -42,7 +42,7 @@ class EmployeeController:
         if not Validators.is_valid_email(email):
             return False, "Email không hợp lệ"
         
-        if self.employee_service.is_ma_dinh_danh_exists(ma_dinh_danh):
+        if self.employee_service.is_identification_exists(identification):
             return False, "Mã định danh đã tồn tại"
         
         # Kiểm tra số điện thoại trùng
@@ -54,7 +54,7 @@ class EmployeeController:
             return False, "Email đã tồn tại"
         
         # Generate employee ID - CHỈ DÙNG 6 SỐ CUỐI
-        employee_id = ma_dinh_danh[-6:]
+        employee_id = identification[-6:]
         
         if self.employee_service.is_id_exists(employee_id):
             return False, "ID nhân viên đã tồn tại"
@@ -62,7 +62,7 @@ class EmployeeController:
         hashed_password = self.employee_service.db.hash_password(password)
         employee = Employee(
             id=employee_id,
-            ma_dinh_danh=ma_dinh_danh,
+            identification=identification,
             password=hashed_password,
             name=name,
             role=role,
@@ -161,14 +161,14 @@ class EmployeeController:
         if search_type == 'Tất cả':
             return [e for e in all_employees 
                    if search_text in e.id.lower() or 
-                   search_text in e.ma_dinh_danh.lower() or 
+                   search_text in e.identification.lower() or 
                    search_text in e.name.lower() or
                    search_text in (e.phone or '').lower() or
                    search_text in (e.email or '').lower()]
         elif search_type == 'ID':
             return [e for e in all_employees if search_text in e.id.lower()]
         elif search_type == 'Mã ĐD':
-            return [e for e in all_employees if search_text in e.ma_dinh_danh.lower()]
+            return [e for e in all_employees if search_text in e.identification.lower()]
         elif search_type == 'Họ tên':
             return [e for e in all_employees if search_text in e.name.lower()]
         elif search_type == 'Số điện thoại':

@@ -57,7 +57,7 @@ class Database:
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS employees (
                     id TEXT PRIMARY KEY,
-                    ma_dinh_danh TEXT UNIQUE NOT NULL,
+                    identification TEXT UNIQUE NOT NULL,
                     password TEXT NOT NULL,
                     full_name TEXT NOT NULL,
                     vaitro INTEGER NOT NULL DEFAULT 0,
@@ -132,14 +132,14 @@ class Database:
             # Thêm admin mặc định - QL + 6 SỐ CUỐI
             cursor.execute('''
                 INSERT OR IGNORE INTO employees 
-                (id, ma_dinh_danh, password, full_name, vaitro, base_salary, phone, email)
+                (id, identification, password, full_name, vaitro, base_salary, phone, email)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ''', ('ql123456', '777777123456', self.hash_password('admin123'), 'Quản trị viên', 1, 15000000, '0123456789', 'admin@example.com'))
             
             # Thêm nhân viên mặc định - NV + 6 SỐ CUỐI
             cursor.execute('''
                 INSERT OR IGNORE INTO employees 
-                (id, ma_dinh_danh, password, full_name, vaitro, base_salary, phone, email)
+                (id, identification, password, full_name, vaitro, base_salary, phone, email)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ''', ('nv654321', '888888654321', self.hash_password('123456'), 'Nhân Viên Mẫu', 0, 8000000, '0987654321', 'nv@example.com'))
             
@@ -173,18 +173,18 @@ class Database:
             logger.error(f"Unexpected error verifying login: {e}")
             return None
     
-    def generate_employee_id(self, ma_dinh_danh: str, role: int) -> str:
+    def generate_employee_id(self, identification: str, role: int) -> str:
         """Tạo ID theo format: nv/ql + 6 số cuối mã định danh"""
-        if len(ma_dinh_danh) != 12 or not ma_dinh_danh.isdigit():
+        if len(identification) != 12 or not identification.isdigit():
             raise ValueError("Mã định danh phải có đúng 12 chữ số")
         
-        six_digits = ma_dinh_danh[-6:]  # 6 số cuối
+        six_digits = identification[-6:]  # 6 số cuối
         return f"{six_digits}"
     
-    def check_ma_dinh_danh_exists(self, ma_dinh_danh: str) -> bool:
+    def check_identification_exists(self, identification: str) -> bool:
         """Kiểm tra mã định danh đã tồn tại chưa"""
         cursor = self.conn.cursor()
-        cursor.execute('SELECT id FROM employees WHERE ma_dinh_danh = ?', (ma_dinh_danh,))
+        cursor.execute('SELECT id FROM employees WHERE identification = ?', (identification,))
         return cursor.fetchone() is not None
 
     def generate_invoice_id(self) -> str:

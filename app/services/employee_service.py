@@ -15,7 +15,7 @@ class EmployeeService:
         for data in employees_data:
             employee = Employee(
                 id=data[0],
-                ma_dinh_danh=data[1],
+                identification=data[1],
                 password=data[2],
                 name=data[3],
                 role=data[4],
@@ -34,7 +34,7 @@ class EmployeeService:
         if data:
             return Employee(
                 id=data[0],
-                ma_dinh_danh=data[1],
+                identification=data[1],
                 password=data[2],
                 name=data[3],
                 role=data[4],
@@ -48,9 +48,9 @@ class EmployeeService:
         try:
             cursor = self.db.conn.cursor()
             cursor.execute('''
-                INSERT INTO employees (id, ma_dinh_danh, password, full_name, vaitro, phone, email, base_salary)
+                INSERT INTO employees (id, identification, password, full_name, vaitro, phone, email, base_salary)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (employee.id, employee.ma_dinh_danh, employee.password, employee.name, 
+            ''', (employee.id, employee.identification, employee.password, employee.name, 
                   employee.role, employee.phone, employee.email, employee.base_salary))
             self.db.conn.commit()
             return True
@@ -89,9 +89,9 @@ class EmployeeService:
             print(f"Error deleting employee: {e}")
             return False
     
-    def is_ma_dinh_danh_exists(self, ma_dinh_danh: str) -> bool:
+    def is_identification_exists(self, identification: str) -> bool:
         cursor = self.db.conn.cursor()
-        cursor.execute('SELECT id FROM employees WHERE ma_dinh_danh = ?', (ma_dinh_danh,))
+        cursor.execute('SELECT id FROM employees WHERE identification = ?', (identification,))
         return cursor.fetchone() is not None
     
     def is_id_exists(self, employee_id: str) -> bool:
@@ -127,7 +127,7 @@ class EmployeeService:
         if data:
             return Employee(
                 id=data[0],
-                ma_dinh_danh=data[1],
+                identification=data[1],
                 password=data[2],
                 name=data[3],
                 role=data[4],

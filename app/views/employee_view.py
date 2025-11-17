@@ -147,7 +147,7 @@ class EmployeeManagementTab(QWidget):
         
         for row, employee in enumerate(employees):
             self.table.setItem(row, 0, QTableWidgetItem(employee.id))
-            self.table.setItem(row, 1, QTableWidgetItem(employee.ma_dinh_danh))
+            self.table.setItem(row, 1, QTableWidgetItem(employee.identification))
             self.table.setItem(row, 2, QTableWidgetItem(employee.name))
             self.table.setItem(row, 3, QTableWidgetItem(employee.get_role_text()))
             self.table.setItem(row, 4, QTableWidgetItem(f"{employee.base_salary:,.0f} VND"))

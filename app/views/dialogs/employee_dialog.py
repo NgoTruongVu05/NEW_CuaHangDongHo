@@ -22,10 +22,10 @@ class EmployeeDialog(QDialog):
         
         # Mã định danh (chỉ nhập khi thêm mới)
         if not self.employee_id:
-            self.ma_dinh_danh_input = QLineEdit()
-            self.ma_dinh_danh_input.setPlaceholderText('Nhập 12 chữ số')
-            self.ma_dinh_danh_input.textChanged.connect(self.on_ma_dinh_danh_changed)
-            form_layout.addRow('Mã định danh (12 số):', self.ma_dinh_danh_input)
+            self.identification_input = QLineEdit()
+            self.identification_input.setPlaceholderText('Nhập 12 chữ số')
+            self.identification_input.textChanged.connect(self.on_identification_changed)
+            form_layout.addRow('Mã định danh (12 số):', self.identification_input)
             
             self.id_label = QLabel('Chưa có ID')
             self.id_label.setStyleSheet('color: #2E86AB; font-weight: bold; background-color: #f0f0f0; padding: 5px; border: 1px solid #ccc;')
@@ -110,7 +110,7 @@ class EmployeeDialog(QDialog):
 
         self.setLayout(main_layout)
     
-    def on_ma_dinh_danh_changed(self, text):
+    def on_identification_changed(self, text):
         if len(text) == 12 and text.isdigit():
             # CHỈ DÙNG 6 SỐ CUỐI làm ID
             employee_id = text[-6:]
@@ -185,9 +185,9 @@ class EmployeeDialog(QDialog):
             )
         else:
             # Thêm mới nhân viên
-            ma_dinh_danh = self.ma_dinh_danh_input.text().strip()
+            identification = self.identification_input.text().strip()
             success, message = self.employee_controller.create_employee(
-                ma_dinh_danh, password, full_name, role, base_salary, phone, email
+                identification, password, full_name, role, base_salary, phone, email
             )
         
         if success:
