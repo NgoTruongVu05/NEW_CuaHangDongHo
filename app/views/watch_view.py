@@ -177,7 +177,7 @@ class ProductManagementTab(QWidget):
 
         self.connectivity_label = QLabel('Kết nối:')
         self.connectivity_filter = QComboBox()
-        self.connectivity_filter.addItems(['Tất cả', 'Bluetooth', 'Wi-Fi', 'GPS', 'NFC'])
+        self.connectivity_filter.addItems(['Tất cả', 'Bluetooth', 'WiFi', 'Không'])
         self.connectivity_filter.currentTextChanged.connect(self.filter_products)
 
         advanced_layout.addWidget(self.power_reserve_label)
@@ -597,13 +597,17 @@ class ProductManagementTab(QWidget):
         selected_type = self.type_filter.currentText()
 
         if selected_type == 'Tất cả':
-            # Show all filters
-            self.power_reserve_label.show()
-            self.power_reserve_input.show()
-            self.battery_life_label.show()
-            self.battery_life_input.show()
-            self.connectivity_label.show()
-            self.connectivity_filter.show()
+            # Show all filters but clear them
+            self.power_reserve_label.hide()
+            self.power_reserve_input.hide()
+            self.battery_life_label.hide()
+            self.battery_life_input.hide()
+            self.connectivity_label.hide()
+            self.connectivity_filter.hide()
+            # Clear all filters
+            self.power_reserve_input.clear()
+            self.battery_life_input.clear()
+            self.connectivity_filter.setCurrentIndex(0)
         elif selected_type == 'Đồng hồ cơ':
             # Show only mechanical watch filters
             self.power_reserve_label.show()
@@ -612,6 +616,9 @@ class ProductManagementTab(QWidget):
             self.battery_life_input.hide()
             self.connectivity_label.hide()
             self.connectivity_filter.hide()
+            # Clear hidden filters
+            self.battery_life_input.clear()
+            self.connectivity_filter.setCurrentIndex(0)
         elif selected_type == 'Đồng hồ điện tử':
             # Show only digital watch filters
             self.power_reserve_label.hide()
@@ -620,6 +627,8 @@ class ProductManagementTab(QWidget):
             self.battery_life_input.show()
             self.connectivity_label.show()
             self.connectivity_filter.show()
+            # Clear hidden filters
+            self.power_reserve_input.clear()
 
     def show_product_details(self, product_id):
         from .dialogs.product_detail_dialog import ProductDetailDialog
