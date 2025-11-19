@@ -74,7 +74,7 @@ class StatisticsTab(QWidget):
         
         self.init_ui()
         self.switch_statistics(self.current_mode)
-        self.load_statistics()
+        self.load_data()
     
     def init_ui(self):
         """Initialize the user interface."""
@@ -237,9 +237,9 @@ class StatisticsTab(QWidget):
 
     def on_filter_changed(self, *_):
         """Handle filter changes."""
-        self.load_statistics()
+        self.load_data()
 
-    def load_statistics(self):
+    def load_data(self):
         """Load and display all statistics based on current filters."""
         month = self.month_filter.currentText()
         year = self.year_filter.value()

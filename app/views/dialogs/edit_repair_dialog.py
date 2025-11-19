@@ -108,7 +108,15 @@ class EditRepairDialog(QDialog):
             self.actual_cost_input.setValue(0.0)
 
     def save(self):
-        estimated_completion = self.estimated_completion_input.date().toString('yyyy-MM-dd')
+        estimated_completion_date = self.estimated_completion_input.date()
+        today = QDate.currentDate()
+        
+        # Chặn ngày dự kiến hoàn thành trước ngày hôm nay
+        if estimated_completion_date < today:
+            QMessageBox.warning(self, 'Lỗi', 'Ngày dự kiến hoàn thành không được trước ngày hôm nay!')
+            return
+        
+        estimated_completion = estimated_completion_date.toString('yyyy-MM-dd')
         status = self.status_map.get(self.status_combo.currentText(), 'Chờ xử lý')
         actual_cost = float(self.actual_cost_input.value()) if status == 'Hoàn thành' else 0.0
 

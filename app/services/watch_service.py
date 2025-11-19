@@ -173,6 +173,25 @@ class WatchService:
             handle_database_error(e, "xóa sản phẩm")
             return False
     
+    def is_watch_name_exists(self, name: str, exclude_watch_id: Optional[str] = None) -> bool:
+        """Check if a watch with the same name already exists."""
+        try:
+            cursor = self.db.conn.cursor()
+            if exclude_watch_id:
+                cursor.execute(
+                    'SELECT id FROM products WHERE LOWER(name) = ? AND id != ?',
+                    (name.lower(), exclude_watch_id)
+                )
+            else:
+                cursor.execute(
+                    'SELECT id FROM products WHERE LOWER(name) = ?',
+                    (name.lower(),)
+                )
+            return cursor.fetchone() is not None
+        except Exception as e:
+            handle_database_error(e, "kiểm tra tên sản phẩm trùng")
+            return False
+    
     def update_watch_quantity(self, watch_id: str, new_quantity: int) -> bool:
         try:
             if new_quantity < 0:

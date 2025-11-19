@@ -21,7 +21,7 @@ class ProductManagementTab(QWidget):
         self.total_pages = 1
         self.total_products = 0
         self.current_filters = {}
-        self.order_by = 'p.quantity'
+        self.order_by = 'p.id'
         self.order_dir = 'ASC'
         self.init_ui()
         self.load_data()
@@ -688,9 +688,16 @@ class ProductManagementTab(QWidget):
             product_type = row.get('product_type', '').strip()
             price = self._parse_price_string(row.get('price', 0))
             quantity = int(float(row.get('quantity', 0))) if row.get('quantity') else 0
-
-            if not name or not brand_name or price <= 0 or quantity < 0:
-                return False, "Dữ liệu không hợp lệ"
+            
+            # Validate required fields
+            if not name:
+                return False, "Tên sản phẩm không được để trống"
+            if not brand_name:
+                return False, "Thương hiệu không được để trống"
+            if price <= 0:
+                return False, f"Giá không hợp lệ: {price}"
+            if quantity < 0:
+                return False, f"Số lượng không hợp lệ: {quantity}"
 
             # Check brand with caching
             if brand_name not in brand_cache:
@@ -698,9 +705,15 @@ class ProductManagementTab(QWidget):
 
             brand = brand_cache[brand_name]
             if not brand:
-                return False, "Thương hiệu không tồn tại"
+                return False, f"Thương hiệu '{brand_name}' không tồn tại"
 
-            # Create watch based on type
+            # Check if product already exists by name and brand
+            existing_product = self._find_existing_product(name, brand_name)
+            if existing_product:
+                # Product already exists, update quantity instead
+                return self._update_existing_product_quantity(existing_product, quantity)
+            
+            # Create new watch based on type
             if product_type.lower() in ['mechanical', 'cơ']:
                 return self._create_mechanical_watch_from_row(row, name, brand_name, price, quantity)
             else:
@@ -708,6 +721,51 @@ class ProductManagementTab(QWidget):
 
         except Exception as e:
             return False, f"Lỗi xử lý: {str(e)}"
+
+    def _find_existing_product(self, name: str, brand_name: str):
+        """Find existing product by name and brand."""
+        all_watches = self.watch_controller.get_all_watches()
+        for watch in all_watches:
+            if watch.name.lower() == name.lower():
+                # Verify brand matches
+                brand = self.brand_controller.get_brand_by_id(watch.brand_id)
+                if brand and brand.name.lower() == brand_name.lower():
+                    return watch
+        return None
+
+    def _update_existing_product_quantity(self, product, quantity_to_add: int):
+        """Update existing product quantity."""
+        try:
+            new_quantity = product.quantity + quantity_to_add
+            product.quantity = new_quantity
+            
+            # Determine product type and call appropriate update method
+            from app.models.mechanical_watch import MechanicalWatch
+            from app.models.electronic_watch import ElectronicWatch
+            
+            if isinstance(product, MechanicalWatch):
+                success, message = self.watch_controller.update_mechanical_watch(
+                    product.id, product.name, self.brand_controller.get_brand_by_id(product.brand_id).name,
+                    product.price, new_quantity, product.description or "",
+                    product.movement_type or "", product.power_reserve or 0,
+                    product.water_resistant or False
+                )
+            elif isinstance(product, ElectronicWatch):
+                success, message = self.watch_controller.update_electronic_watch(
+                    product.id, product.name, self.brand_controller.get_brand_by_id(product.brand_id).name,
+                    product.price, new_quantity, product.description or "",
+                    product.battery_life or 0, product.features or [],
+                    product.connectivity or ""
+                )
+            else:
+                return False, "Không xác định được loại sản phẩm"
+            
+            if success:
+                return True, f"Cập nhật số lượng sản phẩm '{product.name}' thành công (cộng thêm {quantity_to_add}, tổng cộng: {new_quantity})"
+            else:
+                return False, message
+        except Exception as e:
+            return False, f"Lỗi cập nhật số lượng: {str(e)}"
 
     def _create_mechanical_watch_from_row(self, row, name, brand_name, price, quantity):
         """Create mechanical watch from CSV row data."""

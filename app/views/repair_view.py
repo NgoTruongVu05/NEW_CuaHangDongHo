@@ -344,7 +344,15 @@ class CreateRepairTab(QWidget):
             return
 
         issue_desc = self.issue_desc_input.toPlainText()
-        estimated = self.estimated_completion_input.date().toString('yyyy-MM-dd')
+        estimated_date = self.estimated_completion_input.date()
+        today = QDate.currentDate()
+        
+        # Chặn ngày dự kiến hoàn thành trước ngày hôm nay
+        if estimated_date < today:
+            QMessageBox.warning(self, 'Lỗi', 'Ngày dự kiến hoàn thành không được trước ngày hôm nay!')
+            return
+        
+        estimated = estimated_date.toString('yyyy-MM-dd')
         product_id = str(self.selected_product['id'])
 
         success, message = self.repair_controller.create_repair_order(

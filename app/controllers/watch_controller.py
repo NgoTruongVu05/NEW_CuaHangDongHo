@@ -43,6 +43,10 @@ class WatchController:
         if quantity < 0:
             return False, "Số lượng không được âm"
         
+        # Check if product with same name already exists
+        if self.watch_service.is_watch_name_exists(name):
+            return False, f"Sản phẩm '{name}' đã tồn tại"
+        
         # Get or create brand
         brand = self.brand_service.get_brand_by_name(brand_name)
         if not brand:
@@ -80,6 +84,10 @@ class WatchController:
         
         if quantity < 0:
             return False, "Số lượng không được âm"
+        
+        # Check if product with same name already exists
+        if self.watch_service.is_watch_name_exists(name):
+            return False, f"Sản phẩm '{name}' đã tồn tại"
         
         # Get or create brand
         brand = self.brand_service.get_brand_by_name(brand_name)
@@ -119,6 +127,10 @@ class WatchController:
         if quantity < 0:
             return False, "Số lượng không được âm"
         
+        # Check if another product with same name already exists (exclude current product)
+        if self.watch_service.is_watch_name_exists(name, watch_id):
+            return False, f"Sản phẩm '{name}' đã tồn tại"
+        
         # Get brand
         brand = self.brand_service.get_brand_by_name(brand_name)
         if not brand:
@@ -157,6 +169,10 @@ class WatchController:
         
         if quantity < 0:
             return False, "Số lượng không được âm"
+        
+        # Check if another product with same name already exists (exclude current product)
+        if self.watch_service.is_watch_name_exists(name, watch_id):
+            return False, f"Sản phẩm '{name}' đã tồn tại"
         
         # Get brand
         brand = self.brand_service.get_brand_by_name(brand_name)
