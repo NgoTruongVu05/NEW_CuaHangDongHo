@@ -134,14 +134,7 @@ class Database:
                 INSERT OR IGNORE INTO employees 
                 (id, identification, password, full_name, vaitro, base_salary, phone, email)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            ''', ('ql123456', '777777123456', self.hash_password('admin123'), 'Quản trị viên', 1, 15000000, '0123456789', 'admin@example.com'))
-            
-            # Thêm nhân viên mặc định - NV + 6 SỐ CUỐI
-            cursor.execute('''
-                INSERT OR IGNORE INTO employees 
-                (id, identification, password, full_name, vaitro, base_salary, phone, email)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            ''', ('nv654321', '888888654321', self.hash_password('123456'), 'Nhân Viên Mẫu', 0, 8000000, '0987654321', 'nv@example.com'))
+            ''', ('123456', '777777123456', self.hash_password('admin123'), 'Quản trị viên', 1, 15000000, '0123456789', 'admin@example.com'))
             
             self.conn.commit()
         except sqlite3.Error as e:

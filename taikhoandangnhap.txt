@@ -1,0 +1,16 @@
+ADMIN:
+001234 - admin123
+004321 - beheo123
+039012 - concho111
+
+EMPLOYEE:
+111111 - 123456
+222222 - namdeptrai00
+333333 - hongng159
+444444 - ducduc1
+555555 - beheo111
+666666 - tuanvu55
+777777 - ngadang857
+888888 - quanghuy88
+999999 - thudong123
+112233 - hieuthaovai5

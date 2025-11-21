@@ -478,7 +478,9 @@ class InvoiceManagementTab(QWidget):
         
         # Products table
         table = QTableWidget()
+        table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         table.setSelectionMode(QTableWidget.SelectionMode.NoSelection)
+        table.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         table.setColumnCount(4)
         table.setHorizontalHeaderLabels(['Sản phẩm', 'Số lượng', 'Đơn giá', 'Thành tiền'])
         
