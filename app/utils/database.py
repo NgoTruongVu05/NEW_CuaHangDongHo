@@ -134,7 +134,7 @@ class Database:
                 INSERT OR IGNORE INTO employees 
                 (id, identification, password, full_name, vaitro, base_salary, phone, email)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            ''', ('123456', '777777123456', self.hash_password('admin123'), 'Quản trị viên', 1, 15000000, '0123456789', 'admin@example.com'))
+            ''', ('123456', '060205123456', self.hash_password('admin123'), 'Nguyễn Chí Long', 1, 15000000, '0856448954', 'conkhi@gmail.com'))
             
             self.conn.commit()
         except sqlite3.Error as e:
