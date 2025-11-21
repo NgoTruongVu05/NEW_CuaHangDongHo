@@ -52,9 +52,9 @@ class CreateRepairTab(QWidget):
         self.product_table = QTableWidget()
         self.product_table.setSelectionMode(QTableWidget.SelectionMode.NoSelection)
         self.product_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        self.product_table.setColumnCount(5)
-        self.product_table.setHorizontalHeaderLabels(['Chọn', 'Tên đồng hồ', 'Giá', 'Tồn kho', 'ID'])
-        self.product_table.setColumnHidden(4, True)
+        self.product_table.setColumnCount(3)
+        self.product_table.setHorizontalHeaderLabels(['Chọn', 'Tên đồng hồ', 'ID'])
+        self.product_table.setColumnHidden(2, True)
         self.product_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.product_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.product_table.setAlternatingRowColors(True)
@@ -63,8 +63,6 @@ class CreateRepairTab(QWidget):
         header = self.product_table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
         header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
-        header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
         self.product_table.setColumnWidth(0, 50)
 
         product_layout.addWidget(self.product_table)
@@ -195,7 +193,7 @@ class CreateRepairTab(QWidget):
         self.reset_form()
 
     def load_products(self):
-        self.all_products = self.watch_controller.get_available_watches()
+        self.all_products = self.watch_controller.get_all_watches()
         self.filtered_products = self.all_products[:]
         self.current_product_page = 1
         self.display_product_page()
@@ -231,9 +229,7 @@ class CreateRepairTab(QWidget):
             self.product_table.setCellWidget(row, 0, checkbox)
 
             self.product_table.setItem(row, 1, QTableWidgetItem(product.name))
-            self.product_table.setItem(row, 2, QTableWidgetItem(f"{product.price:,.0f} VND"))
-            self.product_table.setItem(row, 3, QTableWidgetItem(str(product.quantity)))
-            self.product_table.setItem(row, 4, QTableWidgetItem(str(product.id)))
+            self.product_table.setItem(row, 2, QTableWidgetItem(str(product.id)))
 
         total_pages = max(1, (len(self.filtered_products) + self.items_per_page - 1) // self.items_per_page)
         self.product_page_label.setText(f"Trang {self.current_product_page}/{total_pages}")
