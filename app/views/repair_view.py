@@ -228,7 +228,9 @@ class CreateRepairTab(QWidget):
             checkbox.stateChanged.connect(lambda state, p=product, r=row: self.select_single_product(p, r))
             self.product_table.setCellWidget(row, 0, checkbox)
 
-            self.product_table.setItem(row, 1, QTableWidgetItem(product.name))
+            name_item = QTableWidgetItem(product.name)
+            name_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.product_table.setItem(row, 1, name_item)
             self.product_table.setItem(row, 2, QTableWidgetItem(str(product.id)))
 
         total_pages = max(1, (len(self.filtered_products) + self.items_per_page - 1) // self.items_per_page)
